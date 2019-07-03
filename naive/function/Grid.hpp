@@ -29,7 +29,7 @@ public:
     //constructor for all purposes
     Grid_1d(double init, double fin, int size);  //evenly from init to fin, size points
     Grid_1d(std::vector<double> p);
-    Point& operator[](int i) {return points[i];};
+    inline Point& operator[](int i) {return points[i];};
     inline int dimension() const{return dim;};
     inline int size() const{return points.size();};
     inline std::vector<int> lengths() const {return lens;};
@@ -43,7 +43,7 @@ class MeshGrid:public Grid{
 public:
     MeshGrid(Grid& g1,Grid& g2); // made from 2 grids
 
-    Point& operator[](int i) {return points[i];};
+    inline Point& operator[](int i) {return points[i];};
     inline int dimension() const{return dim;};
     inline int size() const{return points.size();};
     inline std::vector<int> lengths()const{return lens;};

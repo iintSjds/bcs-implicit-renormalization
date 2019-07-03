@@ -84,8 +84,9 @@ int Iterator::update(double shift=0){
     //double max=*std::max_element(temp.begin(),temp.end());
     //if(max<0) max=1;
     double max=0;
-    for (int i=0;i<2*L;i++) max+=temp[i]*temp[i];
-    max=std::sqrt(max/2/L);
+    //for (int i=0;i<2*L;i++) max+=temp[i]*temp[i];
+    //max=std::sqrt(max/2/L);
+    max=temp[L];
     //std::cout<<max<<std::endl;
     for(int i=0;i<2*L;i++){
 	delta[i]=temp[i]/max;//renormalize
@@ -126,9 +127,9 @@ double test(int l){
 
 
 int main(){
-    for(int l=16;l<10000;l*=2){
+    for(int l=16;l<1000;l*=2){
 	std::cout<<1.0/(l-1)<<"\t"<<test(l)<<std::endl;
-    }
+	}
     return 0;
 
 }

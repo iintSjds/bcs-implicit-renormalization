@@ -1,0 +1,10 @@
+# results:
+*.txt
+*.png
+
+# compile:
+*.exe
+*.o
+
+# temp:
+*~
