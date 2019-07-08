@@ -11,11 +11,13 @@ public:
     // basic information
     int dimension() const {return g.size();};
     int size() const;
-
+    int lengths(int i) const {return g[i].size();};
     // point coordinates
     std::vector<double> point(int n) const;
     std::vector<double> operator[](int n) const;
     double coordinate(int n,int d) const;
+    // su information
+    std::vector<double> gg(int i) const{return g[i];};
     
 
 private:

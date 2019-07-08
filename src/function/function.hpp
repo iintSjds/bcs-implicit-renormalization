@@ -6,7 +6,7 @@
 class Function{
 public:
     //constructors
-    Function(Grid &g_in);
+    Function(Grid g_in);
 
     //basic information
     int size() const {return g.size();};
@@ -16,10 +16,10 @@ public:
     double& operator[](int n) {return val[n];};
     std::vector<double> point(int n) const{return g[n];};
     double coordinate(int n,int d) const{return g.coordinate(n,d);};
-    
+    Grid grid() {return g;}
 private:
     std::vector<double> val;
-    Grid &g;
+    Grid g;
 };
 
 # endif
