@@ -1,8 +1,11 @@
 CC=g++
 CFLAG=-Ofast
-LFLAG=-ltrng4
+LFLAG=-ltrng4 -lhdf5 -lhdf5_cpp
 
-run:./calc_pi.exe
+run:./w_exp.exe pi.h5
+	./w_exp.exe
+
+pi.h5:./calc_pi.exe
 	./calc_pi.exe
 
 OBJECTS=../function/function.o ../function/grid.o
@@ -16,7 +19,7 @@ MAIN_OBJECTS=./calculate_pi.o ./w_expansion.o
 	./calculate_pi.cpp
 	$(CC) -c $(CFLAG) $*.cpp -o $@
 ./w_expansion.o:../function/grid.hpp ../function/function.hpp \
-	./calculate_pi.cpp
+	./w_expansion.cpp
 	$(CC) -c $(CFLAG) $*.cpp -o $@
 ./calc_pi.exe:$(OBJECTS) ./calculate_pi.o
 	$(CC) -o ./calc_pi.exe $^ $(LFLAG)

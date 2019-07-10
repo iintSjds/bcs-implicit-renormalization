@@ -1,10 +1,13 @@
 # results:
 *.txt
 *.png
+*.h5
 
 # compile:
 *.exe
 *.o
+*.out
 
 # temp:
 *~
+*.in
