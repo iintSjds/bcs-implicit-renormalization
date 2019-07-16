@@ -11,11 +11,13 @@ int test_function(){
     std::vector<std::vector<double>> g;
     g.push_back(w);    g.push_back(q);
     Grid g1(g);
+    Grid g2(w,q);
     Function f1(g1);
-    std::cout<<f1.size()<<"\t"<<f1.dimension()<<std::endl;
-    for(int i=0;i<f1.size();i++)
+    Function f2(w,q);
+    std::cout<<f2.size()<<"\t"<<f2.dimension()<<std::endl;
+    for(int i=0;i<f2.size();i++)
 	std::cout<<i<<"\t"<<f1[i]
-		 <<"\t"<<f1.point(i)[0]<<"\t"<<f1.point(i)[1]<<std::endl;
+		 <<"\t"<<f2.point(i)[0]<<"\t"<<f2.point(i)[1]<<std::endl;
     return 1;
 }
 

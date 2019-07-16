@@ -5,6 +5,13 @@ Grid::Grid(std::vector<std::vector<double>> g_in)
 {
 }
 
+Grid::Grid(std::vector<double> g1,std::vector<double> g2){
+    std::vector<std::vector<double>> g_in;
+    g_in.push_back(g1);
+    g_in.push_back(g2);
+    g=g_in;
+}
+
 int Grid::size() const{
     int N=1;
     for(int i=0;i<g.size();i++){

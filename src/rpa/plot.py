@@ -1,8 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-w,p,P,W=np.loadtxt("result.txt",unpack=True)
+w,p,delta=np.loadtxt("delta.txt",unpack=True)
 
 plt.figure()
-plt.plot(p,P)
-plt.savefig("Pp.png")
+plt.plot(p,delta,",")
+plt.savefig("delta.png")

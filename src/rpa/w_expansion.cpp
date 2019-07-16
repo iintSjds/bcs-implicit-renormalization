@@ -11,8 +11,37 @@
 const double pi=3.141592653;
 
 int main(){
-    double e2=1.0;
-
+    std::string line;
+    std::ifstream infile("w.in");
+    double T=0.5,mu=1.0,m=0.5,rs=1.0;
+    std::vector<double> mmt;
+    if (infile.is_open()){
+	while(std::getline(infile,line)){
+	    std::size_t eq=line.find("=");
+	    std::string cmd,val;
+	    if(eq!=std::string::npos){
+		cmd=line.substr(0,eq);
+		val=line.substr(eq+1);
+	    }
+	    if(cmd.compare("set T")==0) T=std::stod(val);
+	    if(cmd.compare("set mu")==0) mu=std::stod(val);
+	    if(cmd.compare("set m")==0) m=std::stod(val);
+	    if(cmd.compare("set rs")==0) rs=std::stod(val);	    	    
+	    if(cmd.compare("set mmt")==0){
+		while(std::getline(infile,line)&&line.compare("end grid")!=0){
+		    mmt.push_back(std::stod(line));
+		    eq=line.find("=");
+		    if(eq!=std::string::npos){
+			cmd=line.substr(0,eq);
+			val=line.substr(eq+1);
+		    }
+		}
+	    }
+	}
+	infile.close();
+    }
+    double e2=rs*1.0421235224;
+    
     H5::H5File file;
     H5::DataSet dataset;
     file.openFile("pi.h5",H5F_ACC_RDWR);
@@ -65,8 +94,8 @@ int main(){
 
     std::vector<std::vector<double>> gwin;
     gwin.push_back(pf.grid().gg(0));
-    std::vector<double> mmt(20,0);
-    for(int i=0;i<mmt.size();i++) mmt[i]=0.1+0.2*i;
+    //    std::vector<double> mmt(20,0);
+    //    for(int i=0;i<mmt.size();i++) mmt[i]=0.1+0.2*i;
     gwin.push_back(mmt);gwin.push_back(mmt);
 
     Function w0(gwin);
@@ -100,16 +129,16 @@ int main(){
     	// 	 <<w0[i]<<std::endl;//<<"\t"
        
     }
-    // std::ofstream wout;
-    // wout.open("w0.txt");
-    // for(int i=0;i<w0.size();i++){
-    // 	wout<<std::setw(10)<<w0.coordinate(i,0)<<"\t"
-    // 	   <<std::setw(10)<<w0.coordinate(i,1)<<"\t"
-    // 	   <<std::setw(10)<<w0.coordinate(i,2)<<"\t"	    
-    // 	   <<w0[i]<<std::endl;//<<"\t"
-    // 	    //<<1/(pf.coordinate(i,1)*pf.coordinate(i,1)+pf[i])<<std::endl;//"\t"
-    // 	    //<<1/(1+pf[i]/pf.coordinate(i,1)/pf.coordinate(i,1))<<std::endl;
-    // }
+    std::ofstream wout;
+    wout.open("w0.txt");
+    for(int i=0;i<w0.size();i++){
+    	wout<<std::setw(10)<<w0.coordinate(i,0)<<"\t"
+    	   <<std::setw(10)<<w0.coordinate(i,1)<<"\t"
+    	   <<std::setw(10)<<w0.coordinate(i,2)<<"\t"	    
+    	   <<w0[i]<<std::endl;//<<"\t"
+    	    //<<1/(pf.coordinate(i,1)*pf.coordinate(i,1)+pf[i])<<std::endl;//"\t"
+    	    //<<1/(1+pf[i]/pf.coordinate(i,1)/pf.coordinate(i,1))<<std::endl;
+    }
 
     file=H5::H5File("w.h5",H5F_ACC_TRUNC);
     H5::Group g2(file.createGroup("/w0"));

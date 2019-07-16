@@ -7,7 +7,8 @@ class Function{
 public:
     //constructors
     Function(Grid g_in);
-
+    Function(std::vector<double> g1,std::vector<double> g2);
+    
     //basic information
     int size() const {return g.size();};
     int dimension() const {return g.dimension();};

@@ -7,7 +7,8 @@ class Grid{
 public:
     // constructors
     Grid(std::vector<std::vector<double>> g_in);
-
+    Grid(std::vector<double> g1,std::vector<double> g2);
+    
     // basic information
     int dimension() const {return g.size();};
     int size() const;
