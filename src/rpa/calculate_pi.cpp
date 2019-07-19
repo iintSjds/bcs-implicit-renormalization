@@ -141,12 +141,12 @@ Pi_Function calc_pi(){
 		cmd=line.substr(0,eq);
 		val=line.substr(eq+1);
 	    }
-	    if(cmd.compare("set T")==0) T=std::stod(val);
-	    if(cmd.compare("set mu")==0) mu=std::stod(val);
-	    if(cmd.compare("set m")==0) m=std::stod(val);	    
+	    if(cmd.compare("set T")==0) T=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set mu")==0) mu=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);	    
 	    if(cmd.compare("set freq")==0){
 		while(std::getline(file,line)&&line.compare("end grid")!=0){
-		    freq.push_back(std::stod(line));
+		    freq.push_back(std::strtod(line.c_str(),NULL));
 		    eq=line.find("=");
 		    if(eq!=std::string::npos){
 			cmd=line.substr(0,eq);
@@ -156,7 +156,7 @@ Pi_Function calc_pi(){
 	    }
 	    if(cmd.compare("set mmt")==0){
 		while(std::getline(file,line)&&line.compare("end grid")!=0){
-		    mmt.push_back(std::stod(line));
+		    mmt.push_back(std::strtod(line.c_str(),NULL));
 		    eq=line.find("=");
 		    if(eq!=std::string::npos){
 			cmd=line.substr(0,eq);
@@ -167,7 +167,7 @@ Pi_Function calc_pi(){
 	}
 	file.close();
     }
-    std::vector<std::vector<double>> g_in;
+    std::vector<std::vector<double> > g_in;
     g_in.push_back(freq);g_in.push_back(mmt);
     Grid g(g_in);
     Pi_Function pf(g,T,mu,m,M);
@@ -201,12 +201,12 @@ Pi_Function test_pi(){
 		cmd=line.substr(0,eq);
 		val=line.substr(eq+1);
 	    }
-	    if(cmd.compare("set T")==0) T=std::stod(val);
-	    if(cmd.compare("set mu")==0) mu=std::stod(val);
-	    if(cmd.compare("set m")==0) m=std::stod(val);	    
+	    if(cmd.compare("set T")==0) T=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set mu")==0) mu=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);	    
 	    if(cmd.compare("set freq")==0){
 		while(std::getline(file,line)&&line.compare("end grid")!=0){
-		    freq.push_back(std::stod(line));
+		    freq.push_back(std::strtod(line.c_str(),NULL));
 		    eq=line.find("=");
 		    if(eq!=std::string::npos){
 			cmd=line.substr(0,eq);
@@ -216,7 +216,7 @@ Pi_Function test_pi(){
 	    }
 	    if(cmd.compare("set mmt")==0){
 		while(std::getline(file,line)&&line.compare("end grid")!=0){
-		    mmt.push_back(std::stod(line));
+		    mmt.push_back(std::strtod(line.c_str(),NULL));
 		    eq=line.find("=");
 		    if(eq!=std::string::npos){
 			cmd=line.substr(0,eq);
@@ -227,7 +227,7 @@ Pi_Function test_pi(){
 	}
 	file.close();
     }
-    std::vector<std::vector<double>> g_in;
+    std::vector<std::vector<double> > g_in;
     g_in.push_back(freq);g_in.push_back(mmt);
     Grid g(g_in);
     Pi_Function pf(g,true);
@@ -247,7 +247,7 @@ Pi_Function test_pi(){
 
 int main(){
     double e2=1.0;
-    Pi_Function pf=calc_pi();
+    Pi_Function pf=test_pi();
 
     H5::H5File file("pi.h5",H5F_ACC_TRUNC);
     H5::Group g1(file.createGroup("/pi"));

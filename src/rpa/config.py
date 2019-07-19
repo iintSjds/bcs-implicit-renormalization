@@ -9,10 +9,10 @@ mu=1.0
 m=0.5
 rs=1.0/1.0421235224
 
-kc=15.0
-wc=15.0
+kc=15
+wc=15
 
-qc=0.000001
+qc=0.00000001
 
 if len(sys.argv)==2:
     rs=float(sys.argv[1])
@@ -37,14 +37,18 @@ v=[np.pi*T,] #freq grid of delta
 count=0
 multi=1
 while v[-1]<wc:
-    if v[-1]<1.0*mu:
+    if v[-1]<0.1*mu:
         v.append(v[-1]+2*np.pi*T*multi)
-    elif v[-1]<4*mu:
-        v.append(v[-1]+((0.2*mu)//(2*np.pi*T)+1)*2*np.pi*T)
+    elif v[-1]<0.2*mu:
+        v.append(v[-1]+((0.05*mu)//(2*np.pi*T)+1)*2*np.pi*T)
+    elif v[-1]<0.4*mu:
+        v.append(v[-1]+((0.02*mu)//(2*np.pi*T)+1)*2*np.pi*T)
+    elif v[-1]<2*mu:
+        v.append(v[-1]+((0.1*mu)//(2*np.pi*T)+1)*2*np.pi*T)
     else:
-        v.append(v[-1]+((1.0*mu)//(2*np.pi*T)+1)*2*np.pi*T)
+        v.append(v[-1]+((0.8*mu)//(2*np.pi*T)+1)*2*np.pi*T)
     count+=1
-    if count==3:
+    if count==5:
         count=0
         multi*=2
 
@@ -52,7 +56,7 @@ q=[qc,]
 while q[-1]<2*kc:
     if q[-1]<0.1*mu:
         step=q[-1]
-        for i in range(4):
+        for i in range(3):
             q.append(q[-1]+step)
     elif q[-1]<4*mu:
         q.append(q[-1]+0.2*mu)
@@ -63,20 +67,26 @@ while q[-1]<2*kc:
 
 k=[qc,]
 while k[-1]<kc:
-    if k[-1]<0.1*mu:
+    if k[-1]<0.2*mu:
         step=k[-1]
-        for i in range(4):
+        for i in range(3):
             k.append(k[-1]+step)
-    elif k[-1]<0.8*mu:
+    elif k[-1]<0.7*mu:
         k.append(k[-1]+0.1*mu)
-    elif k[-1]<1.2*mu:
-        k.append(k[-1]+0.05*mu)
-    elif k[-1]<1.8*mu:
-        k.append(k[-1]+0.1*mu)
-    elif k[-1]<2.2*mu:
-        k.append(k[-1]+0.05*mu)
-    elif k[-1]<3.5*mu:
-        k.append(k[-1]+0.1*mu)
+    elif (mu-k[-1])>qc:
+        n=3
+        step=(mu-k[-1])/n
+        for j in range(n-1):
+            k.append(k[-1]+step)
+    elif k[-1]<mu:
+        k.append(mu)
+        k.append(mu+qc)
+    elif k[-1]<1.3*mu:
+        step=k[-1]-mu
+        for i in range(2):
+            k.append(k[-1]+step)
+    elif k[-1]<4.0*mu:
+        k.append(k[-1]+0.2*mu)
     else:
         k.append(k[-1]+1.0*mu)
 

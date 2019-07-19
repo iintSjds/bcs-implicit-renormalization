@@ -113,7 +113,7 @@ int Iterator::print(){
 
 double test(int l){
     int N=51;
-    double g=2/PI,o=0.1,e=PI,t=e/(l-1)/PI;
+    double g=2.0/PI,o=0.1,e=PI,t=e/(l-1)/PI;
     Iterator it(g,o,e,t,l/2);
     for(int i=0;i<N;i++) it.update(2);
     //it.print();
@@ -127,7 +127,7 @@ double test(int l){
 
 
 int main(){
-    for(int l=16;l<1000;l*=2){
+    for(int l=16;l<8000;l*=2){
 	std::cout<<1.0/(l-1)<<"\t"<<test(l)<<std::endl;
 	}
     return 0;

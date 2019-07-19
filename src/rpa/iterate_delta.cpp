@@ -8,6 +8,10 @@
 # include <string>
 # include "H5Cpp.h"
 
+# include <trng/yarn2.hpp>
+# include <trng/uniform_dist.hpp>
+trng::yarn2 gen;
+
 const double pi=3.141592653;
 
 class Extrapolation{
@@ -21,6 +25,11 @@ private:
     int n1,n2;
     double p1,p2;
 };
+
+inline bool exist_file(const std::string& name){
+    std::ifstream f(name.c_str());
+    return f.good();
+}
 
 class Freq_Extrapolator{
     //provide a table of extrapolation for all frequency points
@@ -69,6 +78,9 @@ public:
     void update1();
     Function get_delta(){return delta;};
     Function get_area(){return area;}
+
+    void save_delta(std::string filename);
+    bool load_delta(std::string filename);
 private:
     double T,mu,mass;
     double wc;
@@ -77,6 +89,61 @@ private:
     Freq_Extrapolator exp_plus,exp_minus;
     Function area;//store integrate area for delta
 };
+
+void Iterator::save_delta(std::string filename){
+    H5::H5File file;
+    //if(!exist_file(filename)){
+    file=H5::H5File(filename,H5F_ACC_TRUNC);
+    H5::Group g1(file.createGroup("/delta"));
+	//}
+	//else{
+	//file.openFile(filename,H5F_ACC_RDWR);
+	//}
+    hsize_t dims[1];
+    dims[0]=delta.grid().lengths(0);
+    H5::DataSpace dataspace=H5::DataSpace(1,dims);
+    H5::DataSet dataset(file.createDataSet("/delta/w",
+					   H5::PredType::IEEE_F64LE,dataspace));
+    dataset.write(&(delta.grid().gg(0)[0]),H5::PredType::IEEE_F64LE);
+    dataspace.close();
+    dataset.close();
+    //store momentum grid
+    dims[0]=delta.grid().lengths(1);
+    dataspace=H5::DataSpace(1,dims);
+    dataset=H5::DataSet(file.createDataSet("/delta/q",
+					   H5::PredType::IEEE_F64LE,dataspace));
+    dataset.write(&(delta.grid().gg(1)[0]),H5::PredType::IEEE_F64LE);
+    dataspace.close();
+    dataset.close();
+    //store val grid
+    dims[0]=delta.size();
+    dataspace=H5::DataSpace(1,dims);
+    dataset=H5::DataSet(file.createDataSet("/delta/delta",
+					   H5::PredType::IEEE_F64LE,dataspace));
+    dataset.write(&(delta[0]),H5::PredType::IEEE_F64LE);
+    dataspace.close();
+    dataset.close();
+}
+
+bool Iterator::load_delta(std::string filename){
+    H5::H5File file;
+    if(!exist_file(filename)) return false;
+    file.openFile(filename,H5F_ACC_RDWR);
+    H5::DataSet dataset;
+
+    //read value of delta
+    hsize_t dims_out[1];
+    dataset=file.openDataSet("/delta/delta");
+    dataset.getSpace().getSimpleExtentDims(dims_out,NULL);
+    std::vector<double> dval(dims_out[0],0);
+    dataset.read(&(dval[0]),H5::PredType::IEEE_F64LE);
+
+    if(delta.size()!=dval.size()) return false;
+    for(int i=0;i<delta.size();i++){
+	delta[i]=dval[i];
+    }
+    return true;
+}
 
 Iterator::Iterator(double T_,double mu_,double m_,
 		   Function w0_ ,std::vector<double> v,
@@ -89,22 +156,24 @@ Iterator::Iterator(double T_,double mu_,double m_,
     exp_plus=Freq_Extrapolator(w0.grid().gg(0),v,true);
     exp_minus=Freq_Extrapolator(w0.grid().gg(0),v,false);    
     // delta init value, could be random
-    for(int i=0;i<delta.size();i++) delta[i]=1;
+    // random init
+    trng::uniform_dist<> uniform(1,0);
+    for(int i=0;i<delta.size();i++) delta[i]=uniform(gen);
     for(int i=0;i<area.size();i++){
 	int m=i/area.grid().gg(1).size(),k=i%area.grid().gg(1).size();
 	double freq_area=0,mmt_area=0;
 	if(m!=area.grid().gg(0).size()-1)
 	    freq_area=area.grid().gg(0)[m+1]-area.grid().gg(0)[m];
 	else
-	    freq_area=area.grid().gg(0)[m]-area.grid().gg(0)[m-1];
+	    freq_area=0;//(area.grid().gg(0)[m]-area.grid().gg(0)[m-1])/2;
 	if(k==0)
 	    mmt_area=(area.grid().gg(1)[k]+area.grid().gg(1)[k+1])/2;
 	else if(k==area.grid().gg(1).size()-1)
-	    mmt_area=(area.grid().gg(1)[k]-area.grid().gg(1)[k-1]);
+	    mmt_area=(area.grid().gg(1)[k]-area.grid().gg(1)[k-1])/2;
 	else
 	    mmt_area=(area.grid().gg(1)[k+1]-area.grid().gg(1)[k-1])/2;
 	//std::cout<<freq_area<<"\t"<<mmt_area<<std::endl;
-	area[i]=freq_area*mmt_area/2/pi/T;
+	area[i]=freq_area/2/pi/T*1;
     }
 }
 
@@ -122,15 +191,14 @@ double Iterator::func(int m,int n,int k,int p){
     	     )
     	/(freq*freq+(mmt*mmt/2/mass-mu)*(mmt*mmt/2/mass-mu))
     	*T*(mmt/2/pi)*(mmt/2/pi);
-    // return -0.7*((freq0+freq)*(freq0+freq)/((freq0+freq)*(freq0+freq)+0.25)
+    //return -0.7*((freq0+freq)*(freq0+freq)/((freq0+freq)*(freq0+freq)+0.25)
     // 	     +(freq0-freq)*(freq0-freq)/((freq0-freq)*(freq0-freq)+0.25))
     // 	/(freq*freq+(mmt*mmt/2/mass-mu)*(mmt*mmt/2/mass-mu))
     // 	*T*(mmt/2/pi)*(mmt/2/pi);
-    // return -0.7/pi*((freq0+freq)*(freq0+freq)/((freq0+freq)*(freq0+freq)+0.25)
-    // 	     +(freq0-freq)*(freq0-freq)/((freq0-freq)*(freq0-freq)+0.25))
-    // 	/freq/delta.grid().gg(1)[psize-1]
+    // return -2.0*((freq0+freq)*(freq0+freq)/((freq0+freq)*(freq0+freq)+0.01)
+    // 	     +(freq0-freq)*(freq0-freq)/((freq0-freq)*(freq0-freq)+0.01))
+    // 	/freq/psize
     // 	*T;
-
 }
 
 double Iterator::update0(double shift,int N){
@@ -144,9 +212,14 @@ double Iterator::update0(double shift,int N){
 		for(int k=0;k<psize;k++){
 		    newdelta0[m*psize+k]=0;
 		    for(int n=0;n<fsize;n++){
-			for(int p=0;p<psize;p++){
+			for(int p=0;p<psize-1;p++){
 			    newdelta0[m*psize+k]
-				+=func(m,n,k,p)*delta[n*psize+p]*area[n*psize+p];
+				+=(func(m,n,k,p)
+				   *delta[n*psize+p]*area[n*psize+p]
+				   +func(m,n,k,p+1)
+				   *delta[n*psize+p+1]*area[n*psize+p+1])
+				*(delta.coordinate(n*psize+p+1,1)
+				  -delta.coordinate(n*psize+p,1))/2.0;
 			}
 		    }
 		    newdelta0[m*psize+k]+=shift*delta[m*psize+k];
@@ -206,13 +279,13 @@ int main(){
 		cmd=line.substr(0,eq);
 		val=line.substr(eq+1);
 	    }
-	    if(cmd.compare("set T")==0) T=std::stod(val);
-	    if(cmd.compare("set mu")==0) mu=std::stod(val);
-	    if(cmd.compare("set m")==0) m=std::stod(val);
-	    if(cmd.compare("set rs")==0) rs=std::stod(val);	    	    
+	    if(cmd.compare("set T")==0) T=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set mu")==0) mu=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set rs")==0) rs=std::strtod(val.c_str(),NULL);
 	    if(cmd.compare("set v")==0){
 		while(std::getline(infile,line)&&line.compare("end grid")!=0){
-		    v.push_back(std::stod(line));
+		    v.push_back(std::strtod(line.c_str(),NULL));
 		    eq=line.find("=");
 		    if(eq!=std::string::npos){
 			cmd=line.substr(0,eq);
@@ -249,7 +322,7 @@ int main(){
     dataset.read(&(wval[0]),H5::PredType::IEEE_F64LE);
 
     //restore w0
-    std::vector<std::vector<double>> g_in;
+    std::vector<std::vector<double> > g_in;
     g_in.push_back(freq);g_in.push_back(q);g_in.push_back(q);
     Function w0(g_in);
     for(int i=0;i<w0.size();i++) w0[i]=wval[i];
@@ -260,10 +333,15 @@ int main(){
     // 	     <<exp_plus(v.size()-1,v.size()-1)(0)<<std::endl;
 
     Iterator it(T,mu,m,w0,v,100);
-    for(int i=0;i<10;i++) {
+    if(exist_file("delta.h5")){
+	bool suc=it.load_delta("delta.h5");
+	std::cout<<std::string("load ")+std::string(suc?"success":"fail")<<std::endl;
+    }
+    for(int i=0;i<20;i++) {
 	for(int j=0;j<10;j++)
 	    it.update1();
-	it.update0(5.0,5);
+	std::cout<<it.update0(5.0,5)<<std::endl;
+	it.save_delta("delta.h5");
     }
     std::cout<<it.update0(5.0,5)<<std::endl;
     Function delta(it.get_delta()),area(it.get_area());

@@ -23,13 +23,13 @@ int main(){
 		cmd=line.substr(0,eq);
 		val=line.substr(eq+1);
 	    }
-	    if(cmd.compare("set T")==0) T=std::stod(val);
-	    if(cmd.compare("set mu")==0) mu=std::stod(val);
-	    if(cmd.compare("set m")==0) m=std::stod(val);
-	    if(cmd.compare("set rs")==0) rs=std::stod(val);	    	    
+	    if(cmd.compare("set T")==0) T=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set mu")==0) mu=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);
+	    if(cmd.compare("set rs")==0) rs=std::strtod(val.c_str(),NULL);
 	    if(cmd.compare("set mmt")==0){
 		while(std::getline(infile,line)&&line.compare("end grid")!=0){
-		    mmt.push_back(std::stod(line));
+		    mmt.push_back(std::strtod(line.c_str(),NULL));
 		    eq=line.find("=");
 		    if(eq!=std::string::npos){
 			cmd=line.substr(0,eq);
@@ -66,7 +66,7 @@ int main(){
     dataset.read(&(pval[0]),H5::PredType::IEEE_F64LE);
 
     //restore pf
-    std::vector<std::vector<double>> g_in;
+    std::vector<std::vector<double> > g_in;
     g_in.push_back(freq);g_in.push_back(q);
     Function pf(g_in);
     for(int i=0;i<pf.size();i++) pf[i]=pval[i];
@@ -92,7 +92,7 @@ int main(){
     	    //<<1/(1+pf[i]/pf.coordinate(i,1)/pf.coordinate(i,1))<<std::endl;
     }
 
-    std::vector<std::vector<double>> gwin;
+    std::vector<std::vector<double> > gwin;
     gwin.push_back(pf.grid().gg(0));
     //    std::vector<double> mmt(20,0);
     //    for(int i=0;i<mmt.size();i++) mmt[i]=0.1+0.2*i;
