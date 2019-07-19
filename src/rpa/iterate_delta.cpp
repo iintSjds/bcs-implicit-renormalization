@@ -4,7 +4,7 @@
 # include <fstream>
 # include <iomanip>
 # include <cmath>
-
+# include <omp.h>
 # include <string>
 # include "H5Cpp.h"
 
@@ -207,6 +207,9 @@ double Iterator::update0(double shift,int N){
     int fsize=delta.grid().gg(0).size();
     double lambda=0;
     for(int i=0;i<N;i++){
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+    {
+	#pragma omp for
 	for(int m=0;m<fsize;m++){
 	    if(delta.grid().gg(0)[m]<=wc){
 		for(int k=0;k<psize;k++){
@@ -226,6 +229,7 @@ double Iterator::update0(double shift,int N){
 		}
 	    }
 	}
+    }
 	for(int m=0;m<fsize;m++){
 	    if(delta.grid().gg(0)[m]<=wc){
 		for(int k=0;k<psize;k++){

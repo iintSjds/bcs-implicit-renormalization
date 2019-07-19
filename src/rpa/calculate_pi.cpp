@@ -3,7 +3,7 @@
 # include <ostream>
 # include <fstream>
 # include <cmath>
-
+# include <omp.h>
 # include <string>
 # include "H5Cpp.h"
 
@@ -54,10 +54,15 @@ Pi_Function::Pi_Function(Grid& g_in,double T_in,double mu_in,double m_in,int N)
 Pi_Function::Pi_Function(Grid& g_in,bool is_analytic_test)
     :func(g_in),T(1),mu(1),m(0.5)
 {
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+    {
+#pragma omp for
+
     for(int i=0;i<func.size();i++){
 	func[i]=1.0/4.0/pi
 	    /(1+func.coordinate(i,0)*func.coordinate(i,0)
 	      /func.coordinate(i,1)/func.coordinate(i,1));
+    }
     }
 }
 

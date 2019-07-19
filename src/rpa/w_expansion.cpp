@@ -4,7 +4,7 @@
 # include <fstream>
 # include <iomanip>
 # include <cmath>
-
+# include <omp.h>
 # include <string>
 # include "H5Cpp.h"
 
@@ -72,6 +72,9 @@ int main(){
     for(int i=0;i<pf.size();i++) pf[i]=pval[i];
 
     Function H1(pf.grid());
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+    {
+#pragma omp for
     for(int i=0;i<H1.size();i++){
     	double val=0;
     	for(int j=(i/H1.grid().lengths(1))*H1.grid().lengths(1);j<i;j++){
@@ -81,6 +84,7 @@ int main(){
     		*(pf.coordinate(j+1,1)-pf.coordinate(j,1))/2;
     	}
     	H1[i]=val;
+    }
     }
     std::ofstream hout;
     hout.open("h1.txt");
@@ -99,6 +103,9 @@ int main(){
     gwin.push_back(mmt);gwin.push_back(mmt);
 
     Function w0(gwin);
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+    {
+#pragma omp for
     for(int i=0;i<w0.size();i++){
     	double h1=0,h2=0;
     	double w=w0.coordinate(i,0);
@@ -128,6 +135,7 @@ int main(){
     	// 	 <<std::setw(8)<<h2<<"\t"
     	// 	 <<w0[i]<<std::endl;//<<"\t"
        
+    }
     }
     std::ofstream wout;
     wout.open("w0.txt");

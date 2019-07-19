@@ -1,6 +1,6 @@
 CC=g++
-CFLAG=-O3 -w
-LFLAG=-ltrng4 -lhdf5 -lhdf5_cpp
+CFLAG=-O3 -w -fopenmp
+LFLAG=-ltrng4 -lhdf5 -lhdf5_cpp -fopenmp
 
 result:delta.h5
 
