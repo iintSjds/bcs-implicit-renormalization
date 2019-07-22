@@ -8,11 +8,30 @@
 # include <string>
 # include "H5Cpp.h"
 
+#include <csignal>
+#include <unistd.h>
+#include <exception>
+
+
 # include <trng/yarn2.hpp>
 # include <trng/uniform_dist.hpp>
 trng::yarn2 gen;
 
 const double pi=3.141592653;
+
+class sigint:public std::exception{
+public:
+    const char* what() const throw(){
+	return "keyboard interrupt";
+    }
+};
+
+void signalHandler( int signum ) {
+   std::cout << "Interrupt signal (" << signum << ") received.\n";
+   // cleanup and close up stuff here
+   // terminate program
+   throw sigint();
+}
 
 class Extrapolation{
     // provide extrapolate for a point,
@@ -123,6 +142,7 @@ void Iterator::save_delta(std::string filename){
     dataset.write(&(delta[0]),H5::PredType::IEEE_F64LE);
     dataspace.close();
     dataset.close();
+    file.close();
 }
 
 bool Iterator::load_delta(std::string filename){
@@ -181,16 +201,18 @@ Iterator::Iterator(double T_,double mu_,double m_,
 double Iterator::func(int m,int n,int k,int p){
     // return T*p^2/(2*pi)^2*GG(wn,p)*W0(wm,wn,k,p)
     int psize=w0.grid().gg(1).size();
+    int psize_sq=psize*psize;
     double mmt=delta.grid().gg(1)[p];
+    double mmt_sq=mmt*mmt;
     double freq=delta.grid().gg(0)[n];
     double freq0=delta.grid().gg(0)[m];
-    return -(exp_plus(m,n)(0)*w0[exp_plus(m,n)[0]*psize*psize+k*psize+p]
-    	     +exp_plus(m,n)(1)*w0[exp_plus(m,n)[1]*psize*psize+k*psize+p]
-    	     +exp_minus(m,n)(0)*w0[exp_minus(m,n)[0]*psize*psize+k*psize+p]
-    	     +exp_minus(m,n)(1)*w0[exp_minus(m,n)[1]*psize*psize+k*psize+p]
+    return -(exp_plus(m,n)(0)*w0[exp_plus(m,n)[0]*psize_sq+k*psize+p]
+    	     +exp_plus(m,n)(1)*w0[exp_plus(m,n)[1]*psize_sq+k*psize+p]
+    	     +exp_minus(m,n)(0)*w0[exp_minus(m,n)[0]*psize_sq+k*psize+p]
+    	     +exp_minus(m,n)(1)*w0[exp_minus(m,n)[1]*psize_sq+k*psize+p]
     	     )
-    	/(freq*freq+(mmt*mmt/2/mass-mu)*(mmt*mmt/2/mass-mu))
-    	*T*(mmt/2/pi)*(mmt/2/pi);
+    	/(freq*freq+(mmt_sq/2/mass-mu)*(mmt_sq/2/mass-mu))
+    	*T*mmt_sq/4/pi/pi;
     //return -0.7*((freq0+freq)*(freq0+freq)/((freq0+freq)*(freq0+freq)+0.25)
     // 	     +(freq0-freq)*(freq0-freq)/((freq0-freq)*(freq0-freq)+0.25))
     // 	/(freq*freq+(mmt*mmt/2/mass-mu)*(mmt*mmt/2/mass-mu))
@@ -248,6 +270,8 @@ void Iterator::update1(){
     Function newdelta1(delta.grid());
     int psize=delta.grid().gg(1).size();
     int fsize=delta.grid().gg(0).size();
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+    #pragma omp for
     for(int m=0;m<fsize;m++){
 	if(delta.grid().gg(0)[m]>wc){
 	    for(int k=0;k<psize;k++){
@@ -255,7 +279,12 @@ void Iterator::update1(){
 		for(int n=0;n<fsize;n++){
 		    for(int p=0;p<psize;p++){
 			newdelta1[m*psize+k]
-			    +=func(m,n,k,p)*delta[n*psize+p]*area[n*psize+p];
+				+=(func(m,n,k,p)
+				   *delta[n*psize+p]*area[n*psize+p]
+				   +func(m,n,k,p+1)
+				   *delta[n*psize+p+1]*area[n*psize+p+1])
+				*(delta.coordinate(n*psize+p+1,1)
+				  -delta.coordinate(n*psize+p,1))/2.0;
 		    }
 		}
 	    }
@@ -300,7 +329,7 @@ int main(){
 	}
 	infile.close();
     }
-    double e2=rs*1.0421235224;
+    double e2=rs*1.0421235224;    
     
     H5::H5File file;
     H5::DataSet dataset;
@@ -336,28 +365,42 @@ int main(){
     // 	     <<freq[exp_plus(v.size()-1,v.size()-1)[0]]<<"\t"
     // 	     <<exp_plus(v.size()-1,v.size()-1)(0)<<std::endl;
 
+    signal(SIGINT, signalHandler);
+
+    
     Iterator it(T,mu,m,w0,v,100);
-    if(exist_file("delta.h5")){
-	bool suc=it.load_delta("delta.h5");
-	std::cout<<std::string("load ")+std::string(suc?"success":"fail")<<std::endl;
-    }
-    for(int i=0;i<20;i++) {
-	for(int j=0;j<10;j++)
-	    it.update1();
+    try{
+	if(exist_file("delta.h5")){
+	    bool suc=it.load_delta("delta.h5");
+	    std::cout<<std::string("load ")+std::string(suc?"success":"fail")
+		     <<std::endl;
+	}
+	for(int i=0;i<20;i++) {
+	    for(int j=0;j<i+1;j++)
+		it.update1();
+	    std::cout<<it.update0(5.0,5)<<std::endl;
+	    it.save_delta("delta.h5");
+	}
 	std::cout<<it.update0(5.0,5)<<std::endl;
 	it.save_delta("delta.h5");
-    }
-    std::cout<<it.update0(5.0,5)<<std::endl;
-    Function delta(it.get_delta()),area(it.get_area());
-    std::ofstream dout;
-    dout.open("delta.txt");
-    for(int i=0;i<delta.size();i++){
-    	dout<<std::setw(10)<<delta.coordinate(i,0)<<"\t"
-    	   <<std::setw(10)<<delta.coordinate(i,1)<<"\t"
-	    <<delta[i]<<std::endl;//<<"\t"
+	Function delta(it.get_delta()),area(it.get_area());
+	std::ofstream dout;
+	dout.open("delta.txt");
+	for(int i=0;i<delta.size();i++){
+	    dout<<std::setw(10)<<delta.coordinate(i,0)<<"\t"
+		<<std::setw(10)<<delta.coordinate(i,1)<<"\t"
+		<<delta[i]<<std::endl;//<<"\t"
     	    //<<1/(pf.coordinate(i,1)*pf.coordinate(i,1)+pf[i])<<std::endl;//"\t"
     	    //<<1/(1+pf[i]/pf.coordinate(i,1)/pf.coordinate(i,1))<<std::endl;
+	}
+	std::cout<<"done"<<std::endl;
     }
-    
+    catch(sigint& e){
+	std::cout<<"saving files"<<std::endl;
+	it.save_delta("delta.h5");
+	std::cout<<e.what()<<std::endl;
+	exit(SIGINT);
+    }
+
     return 0;
 }

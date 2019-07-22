@@ -3,6 +3,7 @@
 # include <ostream>
 # include <fstream>
 # include <iomanip>
+# include <cstdlib>
 # include <cmath>
 # include <omp.h>
 # include <string>
