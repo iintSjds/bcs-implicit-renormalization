@@ -91,7 +91,7 @@ Freq_Extrapolator::Freq_Extrapolator(std::vector<double> w,std::vector<double> v
 class Iterator{
 public:
     Iterator(double T_,double mu_,double m_, Function w0_ ,
-	     std::vector<double> v,double wc);
+	     std::vector<double> v,double wc,double kc);
     double func(int m,int n,int k,int p);
     double update0(double shift,int N);
     void update1();
@@ -102,7 +102,7 @@ public:
     bool load_delta(std::string filename);
 private:
     double T,mu,mass;
-    double wc;
+    double wc,kc,kf;//running cut off for freq and mmt,0~wc and kf-kc~kf+kc
     Function delta;
     Function w0;
     Freq_Extrapolator exp_plus,exp_minus;
@@ -167,8 +167,8 @@ bool Iterator::load_delta(std::string filename){
 
 Iterator::Iterator(double T_,double mu_,double m_,
 		   Function w0_ ,std::vector<double> v,
-		   double wc_)
-    :w0(w0_),T(T_),mu(mu_),mass(m_),wc(wc_),
+		   double wc_,double kc_)
+    :w0(w0_),T(T_),mu(mu_),mass(m_),wc(wc_),kc(kc_),kf(std::sqrt(mu_/2/m_)),
      exp_plus(w0_.grid().gg(0),v,true),exp_minus(w0_.grid().gg(0),v,false)
     ,delta(v,w0_.grid().gg(1)),area(v,w0_.grid().gg(1))
 {
@@ -195,6 +195,9 @@ Iterator::Iterator(double T_,double mu_,double m_,
 	//std::cout<<freq_area<<"\t"<<mmt_area<<std::endl;
 	area[i]=freq_area/2/pi/T*1;
     }
+    std::cout<<"cut off:"<<std::endl
+	     <<"freq:"<<wc<<std::endl
+	     <<"mmt:"<<kf-kc<<"~"<<kf+kc<<std::endl;
 }
 
 
@@ -230,32 +233,36 @@ double Iterator::update0(double shift,int N){
     double lambda=0;
     for(int i=0;i<N;i++){
 #pragma omp parallel num_threads(omp_get_max_threads()-2)
-    {
-	#pragma omp for
-	for(int m=0;m<fsize;m++){
-	    if(delta.grid().gg(0)[m]<=wc){
-		for(int k=0;k<psize;k++){
-		    newdelta0[m*psize+k]=0;
-		    for(int n=0;n<fsize;n++){
-			for(int p=0;p<psize-1;p++){
-			    newdelta0[m*psize+k]
-				+=(func(m,n,k,p)
-				   *delta[n*psize+p]*area[n*psize+p]
-				   +func(m,n,k,p+1)
-				   *delta[n*psize+p+1]*area[n*psize+p+1])
-				*(delta.coordinate(n*psize+p+1,1)
-				  -delta.coordinate(n*psize+p,1))/2.0;
+	{
+#pragma omp for
+	    for(int m=0;m<fsize;m++){
+		if(delta.grid().gg(0)[m]<=wc){
+		    for(int k=0;k<psize;k++){
+			if(delta.grid().gg(1)[k]>kf-kc&&delta.grid().gg(1)[k]<kf+kc){
+			    newdelta0[m*psize+k]=0;
+			    for(int n=0;n<fsize;n++){
+				for(int p=0;p<psize-1;p++){
+				    newdelta0[m*psize+k]
+					+=(func(m,n,k,p)
+					   *delta[n*psize+p]*area[n*psize+p]
+					   +func(m,n,k,p+1)
+					   *delta[n*psize+p+1]*area[n*psize+p+1])
+					*(delta.coordinate(n*psize+p+1,1)
+					  -delta.coordinate(n*psize+p,1))/2.0;
+				}
+			    }
+			    newdelta0[m*psize+k]+=shift*delta[m*psize+k];
 			}
 		    }
-		    newdelta0[m*psize+k]+=shift*delta[m*psize+k];
 		}
 	    }
 	}
-    }
 	for(int m=0;m<fsize;m++){
 	    if(delta.grid().gg(0)[m]<=wc){
 		for(int k=0;k<psize;k++){
-		    delta[m*psize+k]=newdelta0[m*psize+k]/newdelta0[0];
+		    if(delta.grid().gg(1)[k]>kf-kc&&delta.grid().gg(1)[k]<kf+kc){
+			delta[m*psize+k]=newdelta0[m*psize+k]/newdelta0[0];
+		    }
 		}
 	    }
 	}
@@ -275,16 +282,18 @@ void Iterator::update1(){
     for(int m=0;m<fsize;m++){
 	if(delta.grid().gg(0)[m]>wc){
 	    for(int k=0;k<psize;k++){
-		newdelta1[m*psize+k]=0;
-		for(int n=0;n<fsize;n++){
-		    for(int p=0;p<psize;p++){
-			newdelta1[m*psize+k]
+		if(delta.grid().gg(1)[k]<kf-kc||delta.grid().gg(1)[k]>kf+kc){
+		    newdelta1[m*psize+k]=0;
+		    for(int n=0;n<fsize;n++){
+			for(int p=0;p<psize;p++){
+			    newdelta1[m*psize+k]
 				+=(func(m,n,k,p)
 				   *delta[n*psize+p]*area[n*psize+p]
 				   +func(m,n,k,p+1)
 				   *delta[n*psize+p+1]*area[n*psize+p+1])
 				*(delta.coordinate(n*psize+p+1,1)
 				  -delta.coordinate(n*psize+p,1))/2.0;
+			}
 		    }
 		}
 	    }
@@ -293,7 +302,9 @@ void Iterator::update1(){
     for(int m=0;m<fsize;m++){
 	if(delta.grid().gg(0)[m]>wc){
 	    for(int k=0;k<psize;k++){
-		delta[m*psize+k]=newdelta1[m*psize+k];
+		if(delta.grid().gg(1)[k]<kf-kc||delta.grid().gg(1)[k]>kf+kc){
+		    delta[m*psize+k]=newdelta1[m*psize+k];
+		}
 	    }
 	}
     }
@@ -368,15 +379,15 @@ int main(){
     signal(SIGINT, signalHandler);
 
     
-    Iterator it(T,mu,m,w0,v,100);
+    Iterator it(T,mu,m,w0,v,100,100);
     try{
 	if(exist_file("delta.h5")){
 	    bool suc=it.load_delta("delta.h5");
 	    std::cout<<std::string("load ")+std::string(suc?"success":"fail")
 		     <<std::endl;
 	}
-	for(int i=0;i<20;i++) {
-	    for(int j=0;j<i+1;j++)
+	for(int i=0;i<50;i++) {
+	    //for(int j=0;j<i+1&&j<10;j++)
 		it.update1();
 	    std::cout<<it.update0(5.0,5)<<std::endl;
 	    it.save_delta("delta.h5");

@@ -2,10 +2,10 @@ CC=g++
 CFLAG=-O3 -w -fopenmp
 LFLAG=-ltrng4 -lhdf5 -lhdf5_cpp -fopenmp
 
-result:delta.h5
-
 run:./it_delta.exe w.h5 delta.in
 	./it_delta.exe
+
+result:delta.h5
 
 delta.h5:./it_delta.exe w.h5 delta.in
 	./it_delta.exe

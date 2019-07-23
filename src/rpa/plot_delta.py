@@ -14,6 +14,8 @@ qq=np.array([q for i in range(len(w))])
 
 ww=ww.T
 
+np.savetxt("delta_plot.txt",np.column_stack((ww.ravel(),qq.ravel(),d.ravel())),fmt="%.16f")
+
 fig=plt.figure()
 ax=fig.add_subplot(111,projection="3d")
 
