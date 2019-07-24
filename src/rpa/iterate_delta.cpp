@@ -197,7 +197,7 @@ Iterator::Iterator(double T_,double mu_,double m_,
     }
     std::cout<<"cut off:"<<std::endl
 	     <<"freq:"<<wc<<std::endl
-	     <<"mmt:"<<kf-kc<<"~"<<kf+kc<<std::endl;
+	     <<"mmt:"<<kf+kc<<std::endl;
 }
 
 
@@ -294,25 +294,24 @@ void Iterator::update1(){
 #pragma omp parallel num_threads(omp_get_max_threads()-2)
     #pragma omp for
     for(int m=0;m<fsize;m++){
-	if(delta.grid().gg(0)[m]>wc){
-	    for(int k=0;k<psize;k++){
-		if(delta.grid().gg(1)[k]>kf+kc){
-		    newdelta1[m*psize+k]=0;
-		    for(int n=0;n<fsize;n++){
-			for(int p=0;p<psize;p++){
-			    newdelta1[m*psize+k]
-				+=(func(m,n,k,p)
-				   *delta[n*psize+p]*area[n*psize+p]
-				   +func(m,n,k,p+1)
-				   *delta[n*psize+p+1]*area[n*psize+p+1])
-				*(delta.coordinate(n*psize+p+1,1)
-				  -delta.coordinate(n*psize+p,1))/2.0;
-			}
+	for(int k=0;k<psize;k++){
+	    if(delta.grid().gg(1)[k]>kf+kc||delta.grid().gg(0)[m]>wc){
+		newdelta1[m*psize+k]=0;
+		for(int n=0;n<fsize;n++){
+		    for(int p=0;p<psize;p++){
+			newdelta1[m*psize+k]
+			    +=(func(m,n,k,p)
+			       *delta[n*psize+p]*area[n*psize+p]
+			       +func(m,n,k,p+1)
+			       *delta[n*psize+p+1]*area[n*psize+p+1])
+			    *(delta.coordinate(n*psize+p+1,1)
+			      -delta.coordinate(n*psize+p,1))/2.0;
 		    }
 		}
 	    }
 	}
     }
+    
     for(int m=0;m<fsize;m++){
 	if(delta.grid().gg(0)[m]>wc){
 	    for(int k=0;k<psize;k++){
@@ -393,7 +392,7 @@ int main(){
     signal(SIGINT, signalHandler);
 
     
-    Iterator it(T,mu,m,w0,v,100,100);
+    Iterator it(T,mu,m,w0,v,2,1);
     try{
 	if(exist_file("delta.h5")){
 	    bool suc=it.load_delta("delta.h5");
