@@ -7,6 +7,7 @@ f=h5py.File("delta.h5","r")
 w=np.array(f["/delta/w"])
 q=np.array(f["/delta/q"])
 d=np.array(f["/delta/delta"])
+f.close()
 
 d.reshape((len(w),len(q)))
 ww=np.array([w for i in range(len(q))])

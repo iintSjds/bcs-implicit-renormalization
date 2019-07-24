@@ -1,4 +1,5 @@
 import numpy as np
+import h5py
 
 w,q,P=np.loadtxt("pi.txt",unpack=True)
 
@@ -17,3 +18,7 @@ k=k+0.0000000001
 g=1.0
 w0a=4*np.pi*g*(np.log(np.abs((k+p)/(k-p)))-0.5*g/(w**2+g)*(np.log(((k+p)/(k-p))**2)-np.log(np.abs((((k+p)**2+w**2+g)/(((k-p)**2)+w**2+g))))))/k/p
 np.savetxt("w0_check.txt",np.column_stack((w,k,p,w0,w0a)),fmt="%.16f")
+
+f=h5py.File("w.h5","r+")
+f["/w0/w0"].write_direct(w0a)
+f.close()

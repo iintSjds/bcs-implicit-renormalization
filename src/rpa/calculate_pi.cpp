@@ -46,8 +46,12 @@ private:
 Pi_Function::Pi_Function(Grid& g_in,double T_in,double mu_in,double m_in,int N)
     :func(g_in),T(T_in),mu(mu_in),m(m_in)
 {
-    for(int i=0;i<func.size();i++){
-	func[i]=calculate(i,N);
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+    {
+#pragma omp for
+	for(int i=0;i<func.size();i++){
+	    func[i]=calculate(i,N);
+	}
     }
 }
 
