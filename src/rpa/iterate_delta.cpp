@@ -227,18 +227,21 @@ double Iterator::func(int m,int n,int k,int p){
 }
 
 double Iterator::update0(double shift,int N){
-    Function newdelta0(delta.grid());
+    Function newdelta0(delta);
     int psize=delta.grid().gg(1).size();
     int fsize=delta.grid().gg(0).size();
     double lambda=0;
+    double norm=0,kn=0;
     for(int i=0;i<N;i++){
+	norm=0;
+	kn=0;
 #pragma omp parallel num_threads(omp_get_max_threads()-2)
 	{
 #pragma omp for
 	    for(int m=0;m<fsize;m++){
 		if(delta.grid().gg(0)[m]<=wc){
 		    for(int k=0;k<psize;k++){
-			if(delta.grid().gg(1)[k]>kf-kc&&delta.grid().gg(1)[k]<kf+kc){
+			if(delta.grid().gg(1)[k]<=kf+kc){
 			    newdelta0[m*psize+k]=0;
 			    for(int n=0;n<fsize;n++){
 				for(int p=0;p<psize-1;p++){
@@ -252,21 +255,32 @@ double Iterator::update0(double shift,int N){
 				}
 			    }
 			    newdelta0[m*psize+k]+=shift*delta[m*psize+k];
+			    
 			}
 		    }
 		}
 	    }
 	}
+	// for(int m=0;m<fsize;m++){
+	//     for(int k=0;k<psize;k++){
+	// 	norm+=newdelta0[m*psize+k]
+	// 	    *area[m*psize+k]
+	// 	    *(delta.coordinate(m*psize+((k==psize-1)?(k-1):k)+1,1)
+	// 	      -delta.coordinate(m*psize+k,1));
+	//     }
+	// }
+	norm=newdelta0[0];
 	for(int m=0;m<fsize;m++){
 	    if(delta.grid().gg(0)[m]<=wc){
 		for(int k=0;k<psize;k++){
-		    if(delta.grid().gg(1)[k]>kf-kc&&delta.grid().gg(1)[k]<kf+kc){
-			delta[m*psize+k]=newdelta0[m*psize+k]/newdelta0[0];
+		    if(delta.grid().gg(1)[k]<=kf+kc){
+			delta[m*psize+k]=newdelta0[m*psize+k]
+			    /norm;
 		    }
 		}
 	    }
 	}
-	lambda=newdelta0[0]-shift;
+	lambda=norm-shift;
     }
 
     return lambda;
@@ -274,7 +288,7 @@ double Iterator::update0(double shift,int N){
 }
 
 void Iterator::update1(){
-    Function newdelta1(delta.grid());
+    Function newdelta1(delta);
     int psize=delta.grid().gg(1).size();
     int fsize=delta.grid().gg(0).size();
 #pragma omp parallel num_threads(omp_get_max_threads()-2)
@@ -282,7 +296,7 @@ void Iterator::update1(){
     for(int m=0;m<fsize;m++){
 	if(delta.grid().gg(0)[m]>wc){
 	    for(int k=0;k<psize;k++){
-		if(delta.grid().gg(1)[k]<kf-kc||delta.grid().gg(1)[k]>kf+kc){
+		if(delta.grid().gg(1)[k]>kf+kc){
 		    newdelta1[m*psize+k]=0;
 		    for(int n=0;n<fsize;n++){
 			for(int p=0;p<psize;p++){
@@ -302,7 +316,7 @@ void Iterator::update1(){
     for(int m=0;m<fsize;m++){
 	if(delta.grid().gg(0)[m]>wc){
 	    for(int k=0;k<psize;k++){
-		if(delta.grid().gg(1)[k]<kf-kc||delta.grid().gg(1)[k]>kf+kc){
+		if(delta.grid().gg(1)[k]>kf+kc){
 		    delta[m*psize+k]=newdelta1[m*psize+k];
 		}
 	    }
@@ -387,9 +401,9 @@ int main(){
 		     <<std::endl;
 	}
 	for(int i=0;i<50;i++) {
-	    //for(int j=0;j<i+1&&j<10;j++)
+	    std::cout<<it.update0(5.0,2)<<std::endl;
+	    //	    for(int j=0;j<2;j++)
 		it.update1();
-	    std::cout<<it.update0(5.0,5)<<std::endl;
 	    it.save_delta("delta.h5");
 	}
 	std::cout<<it.update0(5.0,5)<<std::endl;
