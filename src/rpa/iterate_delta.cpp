@@ -178,7 +178,7 @@ Iterator::Iterator(double T_,double mu_,double m_,
     // delta init value, could be random
     // random init
     trng::uniform_dist<> uniform(1,0);
-    for(int i=0;i<delta.size();i++) delta[i]=uniform(gen);
+    for(int i=0;i<delta.size();i++) delta[i]=2*uniform(gen)-1;
     for(int i=0;i<area.size();i++){
 	int m=i/area.grid().gg(1).size(),k=i%area.grid().gg(1).size();
 	double freq_area=0,mmt_area=0;
@@ -277,6 +277,7 @@ double Iterator::update0(double shift,int N){
 		}
 	    }
 	}
+	std::cout<<"sample delta:"<<delta[fsize*psize-100]<<std::endl;
 	lambda=norm-shift;
     }
 
@@ -286,18 +287,20 @@ double Iterator::update0(double shift,int N){
 
 void Iterator::update1(int M){
     std::vector<double> sum1(delta.size(),0);
+    std::vector<double> newsum1(delta.size(),0);
     std::vector<double> WGGdelta0(delta.size(),0);
     int psize=delta.grid().gg(1).size();
     int fsize=delta.grid().gg(0).size();
 #pragma omp parallel num_threads(omp_get_max_threads()-2)
+    // init
 #pragma omp for
     for(int m=0;m<fsize;m++){
 	for(int k=0;k<psize;k++){
 	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
 		for(int n=0;n<fsize;n++){
-		    for(int p=0;p<psize;p++){
-			if((delta.grid().gg(1)[n]<=kf+kc)
-			   &&(delta.grid().gg(0)[p]<=wc)){
+		    for(int p=0;p<psize-1;p++){
+			if((delta.grid().gg(1)[p]<=kf+kc)
+			   &&(delta.grid().gg(0)[n]<=wc)){
 			    WGGdelta0[m*psize+k]
 				+=(func(m,n,k,p)
 				   *delta[n*psize+p]*area[n*psize+p]
@@ -308,10 +311,11 @@ void Iterator::update1(int M){
 			}
 		    }
 		}
-		sum1[m*psize+k]=delta[m*psize+k];
+		newsum1[m*psize+k]=sum1[m*psize+k]=delta[m*psize+k];
 	    }
 	}
     }
+    // calculate with accumulation
 #pragma omp for
     for(int i=1;i<M+1;i++){
 	for(int m=0;m<fsize;m++){
@@ -319,10 +323,10 @@ void Iterator::update1(int M){
 		if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
 		    //newdelta1[m*psize+k]=0;
 		    for(int n=0;n<fsize;n++){
-			for(int p=0;p<psize;p++){
+			for(int p=0;p<psize-1;p++){
 			    if((delta.grid().gg(1)[p]>kf+kc)
 			       ||(delta.grid().gg(0)[n]>wc)){
-				sum1[m*psize+k]
+				newsum1[m*psize+k]
 				    +=(func(m,n,k,p)
 				       *sum1[n*psize+p]*area[n*psize+p]
 				       +func(m,n,k,p+1)
@@ -332,22 +336,25 @@ void Iterator::update1(int M){
 			    }
 			}
 		    }
-		    sum1[m*psize+k]+=WGGdelta0[m*psize+k];
+		    sum1[m*psize+k]=newsum1[m*psize+k]+WGGdelta0[m*psize+k];
+		    newsum1[m*psize+k]=sum1[m*psize+k];
 		}
 	    }
 	}
+	std::cout<<"sample sum:"<<sum1[fsize*psize-100]<<std::endl;
     }
+    // update delta1
 #pragma omp for
     for(int m=0;m<fsize;m++){
 	for(int k=0;k<psize;k++){
 	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
-		//newdelta1[m*psize+k]=0;
+		delta[m*psize+k]=0;
 		for(int n=0;n<fsize;n++){
-		    for(int p=0;p<psize;p++){
+		    for(int p=0;p<psize-1;p++){
 			if((delta.grid().gg(1)[p]>kf+kc)
 			   ||(delta.grid().gg(0)[n]>wc)){
 			    delta[m*psize+k]
-				=(func(m,n,k,p)
+				+=(func(m,n,k,p)
 				  *sum1[n*psize+p]*area[n*psize+p]
 				  +func(m,n,k,p+1)
 				  *sum1[n*psize+p+1]*area[n*psize+p+1])
@@ -360,6 +367,7 @@ void Iterator::update1(int M){
 	    }
 	}
     }
+    std::cout<<"sample delta:"<<delta[fsize*psize-100]<<std::endl;
     // for(int m=0;m<fsize;m++){
     // 	for(int k=0;k<psize;k++){
     // 	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
@@ -441,16 +449,16 @@ int main(){
     Iterator it(T,mu,m,w0,v,2,1);
     try{
 	if(exist_file("delta.h5")){
-	    bool suc=it.load_delta("delta.h5");
+	    bool suc=it.load_delta("delta.h5"); 
 	    std::cout<<std::string("load ")+std::string(suc?"success":"fail")
 		     <<std::endl;
 	}
 	for(int i=0;i<50;i++) {
-	    std::cout<<it.update0(5.0,2)<<std::endl;
-	    it.update1(i+2);
+	    it.update1(8);
+	    std::cout<<it.update0(5.0,6)<<std::endl;
 	    it.save_delta("delta.h5");
 	}
-	std::cout<<it.update0(5.0,5)<<std::endl;
+	std::cout<<it.update0(5.0,1)<<std::endl;
 	it.save_delta("delta.h5");
 	Function delta(it.get_delta()),area(it.get_area());
 	std::ofstream dout;
