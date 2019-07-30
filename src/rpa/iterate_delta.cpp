@@ -5,6 +5,9 @@
 # include <iomanip>
 # include <cmath>
 # include <omp.h>
+
+# include <algorithm>
+
 # include <string>
 # include "H5Cpp.h"
 
@@ -12,11 +15,13 @@
 #include <unistd.h>
 #include <exception>
 
+#pragma omp declare reduction(vecdplus: std::vector<double>:\
+    std::transform(omp_out.begin(),omp_out.end(),omp_in.begin(),omp_out.begin(),\
+		   std::plus<double>())) initializer(omp_priv=omp_orig)
 
 # include <trng/yarn2.hpp>
-# include <trng/uniform_dist.hpp>
+# include <trng/uniform01_dist.hpp>
 trng::yarn2 gen;
-
 const double pi=3.141592653;
 
 class sigint:public std::exception{
@@ -95,6 +100,8 @@ public:
     double func(int m,int n,int k,int p);
     double update0(double shift,int N);
     void update1(int M);
+    void update1_mc(int M,int N);
+
     Function get_delta(){return delta;};
     Function get_area(){return area;}
 
@@ -107,6 +114,8 @@ private:
     Function w0;
     Freq_Extrapolator exp_plus,exp_minus;
     Function area;//store integrate area for delta
+    std::vector<double> sum1;
+    double count;
 };
 
 void Iterator::save_delta(std::string filename){
@@ -161,7 +170,9 @@ bool Iterator::load_delta(std::string filename){
     if(delta.size()!=dval.size()) return false;
     for(int i=0;i<delta.size();i++){
 	delta[i]=dval[i];
+	sum1[i]=dval[i];
     }
+    count=0;
     return true;
 }
 
@@ -170,15 +181,21 @@ Iterator::Iterator(double T_,double mu_,double m_,
 		   double wc_,double kc_)
     :w0(w0_),T(T_),mu(mu_),mass(m_),wc(wc_),kc(kc_),kf(std::sqrt(mu_/2/m_)),
      exp_plus(w0_.grid().gg(0),v,true),exp_minus(w0_.grid().gg(0),v,false)
-    ,delta(v,w0_.grid().gg(1)),area(v,w0_.grid().gg(1))
+    ,delta(v,w0_.grid().gg(1)),area(v,w0_.grid().gg(1)),
+     count(0),sum1(v.size()*w0_.grid().gg(1).size(),0)
+
 {
     //make a table for extrapolating freq
     exp_plus=Freq_Extrapolator(w0.grid().gg(0),v,true);
     exp_minus=Freq_Extrapolator(w0.grid().gg(0),v,false);    
     // delta init value, could be random
     // random init
-    trng::uniform_dist<> uniform(1,0);
-    for(int i=0;i<delta.size();i++) delta[i]=2*uniform(gen)-1;
+    trng::uniform01_dist<> uniform;
+    for(int i=0;i<delta.size();i++){
+	delta[i]=2*uniform(gen)-1;
+	sum1[i]=delta[i];
+    }
+    
     for(int i=0;i<area.size();i++){
 	int m=i/area.grid().gg(1).size(),k=i%area.grid().gg(1).size();
 	double freq_area=0,mmt_area=0;
@@ -228,10 +245,32 @@ double Iterator::func(int m,int n,int k,int p){
 
 double Iterator::update0(double shift,int N){
     Function newdelta0(delta.grid());
+    std::vector<double> WGGdelta1(delta.size(),0);
     int psize=delta.grid().gg(1).size();
     int fsize=delta.grid().gg(0).size();
     double lambda=0;
     double norm=0,kn=0;
+    #pragma omp for
+    for(int m=0;m<fsize;m++){
+	for(int k=0;k<psize;k++){
+	    if((delta.grid().gg(1)[k]<=kf+kc)&&(delta.grid().gg(0)[m]<=wc)){
+		for(int n=0;n<fsize;n++){
+		    for(int p=0;p<psize-1;p++){
+			if((delta.grid().gg(1)[p]>kf+kc)
+			   ||(delta.grid().gg(0)[n]>wc)){
+			    WGGdelta1[m*psize+k]
+				+=(func(m,n,k,p)
+				   *delta[n*psize+p]*area[n*psize+p]
+				   +func(m,n,k,p+1)
+				   *delta[n*psize+p+1]*area[n*psize+p+1])
+				*(delta.coordinate(n*psize+p+1,1)
+				  -delta.coordinate(n*psize+p,1))/2.0;
+			}
+		    }
+		}
+	    }
+	}
+    }
     for(int i=0;i<N;i++){
 	norm=0;
 	kn=0;
@@ -245,16 +284,21 @@ double Iterator::update0(double shift,int N){
 			newdelta0[m*psize+k]=0;
 			for(int n=0;n<fsize;n++){
 			    for(int p=0;p<psize-1;p++){
-				newdelta0[m*psize+k]
-				    +=(func(m,n,k,p)
-				       *delta[n*psize+p]*area[n*psize+p]
-				       +func(m,n,k,p+1)
-				       *delta[n*psize+p+1]*area[n*psize+p+1])
-				    *(delta.coordinate(n*psize+p+1,1)
-				      -delta.coordinate(n*psize+p,1))/2.0;
+				if((delta.grid().gg(1)[p]<=kf+kc)
+				   &&(delta.grid().gg(0)[n]<=wc)){
+
+				    newdelta0[m*psize+k]
+					+=(func(m,n,k,p)
+					   *delta[n*psize+p]*area[n*psize+p]
+					   +func(m,n,k,p+1)
+					   *delta[n*psize+p+1]*area[n*psize+p+1])
+					*(delta.coordinate(n*psize+p+1,1)
+					  -delta.coordinate(n*psize+p,1))/2.0;
+				}
 			    }
 			}
-			newdelta0[m*psize+k]+=shift*delta[m*psize+k];
+			newdelta0[m*psize+k]+=
+			    shift*delta[m*psize+k]+WGGdelta1[m*psize+k];
 		    }
 		}
 	    }
@@ -377,6 +421,66 @@ void Iterator::update1(int M){
     // }
 }
 
+void Iterator::update1_mc(int M, int N){
+    //    std::vector<double> sum1(delta.value());
+    //    double count=0;
+    trng::yarn2 mc;
+    trng::uniform01_dist<> uniform;
+    int psize=delta.grid().gg(1).size();
+    int fsize=delta.grid().gg(0).size();
+    double all=delta.size()*delta.size();
+    for(int i=0;i<M;i++){
+	double subcount=0;
+	std::vector<double> subsum1(delta.size(),0);
+	#pragma omp parallel num_threads(omp_get_max_threads()-2)	\
+    reduction(+:count) reduction(vecdplus:subsum1)
+	for(int j=0;j<N;j++){
+	    mc.split(omp_get_num_threads(),omp_get_thread_num());
+	    // propose a new point
+	    int m=uniform(mc)*fsize;
+	    int n=uniform(mc)*fsize;
+	    int k=uniform(mc)*psize;
+	    int p=uniform(mc)*psize;
+	    subcount++;
+	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
+		if((delta.grid().gg(1)[p]>kf+kc)||(delta.grid().gg(0)[n]>wc)){
+		    subsum1[m*psize+k]+=(func(m,n,k,p)
+					 *(sum1[n*psize+p]+subsum1[n*psize+p])
+					 *area[n*psize+p]
+				      +func(m,n,k,p+1)
+					 *(sum1[n*psize+p+1]+subsum1[n*psize+p])
+					 *area[n*psize+p+1])
+			*(delta.coordinate(n*psize+p+1,1)
+			  -delta.coordinate(n*psize+p,1))/2.0/
+			(count+subcount+all)*all;
+		}
+		else{
+		    subsum1[m*psize+k]+=(func(m,n,k,p)
+				      *delta[n*psize+p]*area[n*psize+p]
+				      +func(m,n,k,p+1)
+				      *delta[n*psize+p+1]*area[n*psize+p+1])
+			*(delta.coordinate(n*psize+p+1,1)
+			  -delta.coordinate(n*psize+p,1))/2.0;
+		}
+	    }
+	}
+	#pragma omp critical
+	count+=subcount;
+	std::transform(sum1.begin(),sum1.end(),
+		       subsum1.begin(),sum1.begin(),std::plus<double>());
+    }
+    // update delta1
+    #pragma omp for
+    for(int m=0;m<fsize;m++){
+	for(int k=0;k<psize;k++){
+	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
+		delta[m*psize+k]=sum1[m*psize+k]/(count+all)*all;
+	    }
+	}
+    }
+
+}
+
 int main(){
     std::string line;
     std::ifstream infile("delta.in");
@@ -454,7 +558,7 @@ int main(){
 		     <<std::endl;
 	}
 	for(int i=0;i<50;i++) {
-	    it.update1(8);
+	    it.update1_mc(10,100000);
 	    std::cout<<it.update0(5.0,6)<<std::endl;
 	    it.save_delta("delta.h5");
 	}

@@ -21,4 +21,5 @@ fig=plt.figure()
 ax=fig.add_subplot(111,projection="3d")
 
 ax.scatter(ww,qq,d,marker=".")
+#ax.scatter(ww,qq,1,marker=".")
 plt.show()
