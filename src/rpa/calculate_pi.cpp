@@ -17,7 +17,7 @@ trng::yarn2 gen;
 // calculate bold interaction w
 // produce a bare w result file and a helper result file for further use
 
-const int M=100000;
+const int M=1000000;
 const double pi=3.141592653;
 
 class Pi_Function{
@@ -46,9 +46,9 @@ private:
 Pi_Function::Pi_Function(Grid& g_in,double T_in,double mu_in,double m_in,int N)
     :func(g_in),T(T_in),mu(mu_in),m(m_in)
 {
-#pragma omp parallel num_threads(omp_get_max_threads()-2)
+    #pragma omp parallel num_threads(omp_get_max_threads()-2)
     {
-#pragma omp for
+	#pragma omp for
 	for(int i=0;i<func.size();i++){
 	    func[i]=calculate(i,N);
 	}
@@ -106,7 +106,8 @@ double Pi_Function::calculate(int n,int M){
 	else I1++;
     }
 
-    D0=I1/I0*D0+0.0000001;
+    D0=0.1*I1/I0*D0+0.0000001;
+    I0=I1=0;
 
     for(int i=0;i<M;i++){
 	newindex=(uniform(gen)<P0)?0:1;
@@ -256,7 +257,7 @@ Pi_Function test_pi(){
 
 int main(){
     double e2=1.0;
-    Pi_Function pf=test_pi();
+    Pi_Function pf=calc_pi();
 
     H5::H5File file("pi.h5",H5F_ACC_TRUNC);
     H5::Group g1(file.createGroup("/pi"));

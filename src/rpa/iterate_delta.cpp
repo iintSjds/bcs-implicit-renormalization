@@ -321,7 +321,7 @@ double Iterator::update0(double shift,int N){
 		}
 	    }
 	}
-	std::cout<<"sample delta:"<<delta[fsize*psize-100]<<std::endl;
+	//std::cout<<"sample delta:"<<delta[fsize*psize-100]<<std::endl;
 	lambda=norm-shift;
     }
 
@@ -411,7 +411,7 @@ void Iterator::update1(int M){
 	    }
 	}
     }
-    std::cout<<"sample delta:"<<delta[fsize*psize-100]<<std::endl;
+    //std::cout<<"sample delta:"<<delta[fsize*psize-100]<<std::endl;
     // for(int m=0;m<fsize;m++){
     // 	for(int k=0;k<psize;k++){
     // 	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
@@ -430,6 +430,7 @@ void Iterator::update1_mc(int M, int N){
     int fsize=delta.grid().gg(0).size();
     double all=delta.size()*delta.size();
     for(int i=0;i<M;i++){
+	double multi=1+count/all;
 	double subcount=0;
 	std::vector<double> subsum1(delta.size(),0);
 	#pragma omp parallel num_threads(omp_get_max_threads()-2)	\
@@ -441,10 +442,10 @@ void Iterator::update1_mc(int M, int N){
 	    int n=uniform(mc)*fsize;
 	    int k=uniform(mc)*psize;
 	    int p=uniform(mc)*psize;
-	    subcount++;
+	    subcount+=multi;
 	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
 		if((delta.grid().gg(1)[p]>kf+kc)||(delta.grid().gg(0)[n]>wc)){
-		    subsum1[m*psize+k]+=(func(m,n,k,p)
+		    subsum1[m*psize+k]+=multi*(func(m,n,k,p)
 					 *(sum1[n*psize+p]+subsum1[n*psize+p])
 					 *area[n*psize+p]
 				      +func(m,n,k,p+1)
@@ -455,7 +456,7 @@ void Iterator::update1_mc(int M, int N){
 			(count+subcount+all)*all;
 		}
 		else{
-		    subsum1[m*psize+k]+=(func(m,n,k,p)
+		    subsum1[m*psize+k]+=multi*(func(m,n,k,p)
 				      *delta[n*psize+p]*area[n*psize+p]
 				      +func(m,n,k,p+1)
 				      *delta[n*psize+p+1]*area[n*psize+p+1])
@@ -550,7 +551,7 @@ int main(){
     signal(SIGINT, signalHandler);
 
     
-    Iterator it(T,mu,m,w0,v,2,1);
+    Iterator it(T,mu,m,w0,v,1,100);
     try{
 	if(exist_file("delta.h5")){
 	    bool suc=it.load_delta("delta.h5"); 
@@ -558,8 +559,8 @@ int main(){
 		     <<std::endl;
 	}
 	for(int i=0;i<50;i++) {
-	    it.update1_mc(10,100000);
-	    std::cout<<it.update0(5.0,6)<<std::endl;
+	    it.update1_mc(100,100000);
+	    std::cout<<it.update0(5.0,10)<<std::endl;
 	    it.save_delta("delta.h5");
 	}
 	std::cout<<it.update0(5.0,1)<<std::endl;
@@ -582,6 +583,6 @@ int main(){
 	std::cout<<e.what()<<std::endl;
 	exit(SIGINT);
     }
-
+    
     return 0;
 }
