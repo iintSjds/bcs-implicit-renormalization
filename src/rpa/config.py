@@ -58,26 +58,26 @@ q=[qc,]
 while q[-1]<2*Kc:
     if q[-1]<0.1*mu:
         step=q[-1]
-        for i in range(3):
+        for i in range(8):
             q.append(q[-1]+step)
     elif q[-1]<4*mu:
-        q.append(q[-1]+0.2*mu)
+        q.append(q[-1]+0.1*mu)
     elif q[-1]<8*mu:
-        q.append(q[-1]+1.0*mu)
+        q.append(q[-1]+0.5*mu)
     else:
-        q.append(q[-1]+2.0*mu)
+        q.append(q[-1]+1.0*mu)
 
 k=[kc,]
 Nlog=20
 while k[-1]<Kc:
-    if k[-1]<0.2*mu:
+    if k[-1]<0.1*mu:
         step=k[-1]
-        for i in range(3):
+        for i in range(7):
             k.append(k[-1]+step)
     elif k[-1]<0.7*mu:
         k.append(k[-1]+0.1*mu)
     elif (mu-k[-1])>kc:
-        n=3
+        n=7
         step=(mu-k[-1])/n
         for j in range(n-1):
             k.append(k[-1]+step)
@@ -86,7 +86,7 @@ while k[-1]<Kc:
         k.append(mu+kc)
     elif k[-1]<1.3*mu:
         step=k[-1]-mu
-        for i in range(2):
+        for i in range(7):
             k.append(k[-1]+step)
     elif k[-1]<4.0*mu:
         k.append(k[-1]+0.2*mu)

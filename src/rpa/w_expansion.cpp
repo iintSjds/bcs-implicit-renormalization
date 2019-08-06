@@ -11,6 +11,134 @@
 
 const double pi=3.141592653;
 
+class Helper_Func{
+public:
+    Helper_Func(Function pf,double e2_,int n);
+
+    int order() const{return H.size();}
+
+    Function& operator[](int i){return H[i];}
+private:
+    double e2;
+    std::vector<Function> H;
+};
+
+Helper_Func::Helper_Func(Function pf,double e2_,int n)
+    :e2(e2_)
+{
+    for(int m=0;m<n;m++){
+	Function h(pf.grid());
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+	{
+#pragma omp for
+	    for(int i=0;i<h.size();i++){
+		double val=0;
+		for(int j=(i/h.grid().lengths(1))*h.grid().lengths(1);j<i;j++){
+		    val+=(std::pow(pf.coordinate(j,1),2*m)
+			  /(pf.coordinate(j,1)/4/pi/e2
+			    +pf[j]/pf.coordinate(j,1))
+			  +std::pow(pf.coordinate(j+1,1),2*m)
+			  /(pf.coordinate(j+1,1)/4/pi/e2
+			   +pf[j+1]/pf.coordinate(j+1,1)))
+			//e2*(pf.coordinate(j,1)+pf.coordinate(j+1,1))
+			*(pf.coordinate(j+1,1)-pf.coordinate(j,1))/2;
+		}
+		h[i]=val;
+	    }
+	}
+	H.push_back(h);
+    }
+}
+
+class W_Func{
+public:
+    W_Func(Grid gwin,Helper_Func H);
+    int order() const{return W.size();}
+    Function& operator[](int i){return W[i];}
+private:
+    std::vector<Function> W;
+};
+
+W_Func::W_Func(Grid gwin,Helper_Func H){
+    for(int m=0;m<H.order();m++){
+	Function w0(gwin);
+#pragma omp parallel num_threads(omp_get_max_threads()-2)
+	{
+#pragma omp for
+	    for(int i=0;i<w0.size();i++){
+		double h1=0,h2=0;
+		double w=w0.coordinate(i,0);
+		double p1=w0.coordinate(i,1)+w0.coordinate(i,2);
+		double p2=std::abs(w0.coordinate(i,1)-w0.coordinate(i,2));
+		double k=w0.coordinate(i,1),p=w0.coordinate(i,2);
+		int m=0,n1=0,n2=0;
+		for(int j=0;j<H[0].size();j+=H[0].grid().gg(1).size())
+		    if(std::abs(H[0].coordinate(j,0)-w)<1e-9)
+			m=j;
+		for(int j=0;j<H[0].grid().gg(1).size();j++){
+		    if(H[0].coordinate(m+j,1)<p1) n1++;
+		    if(H[0].coordinate(m+j,1)<p2) n2++;	    
+		}
+		double hp=0,hm=0;
+		if(n1>0){
+		    if(m==0){
+			hp=H[0][m+n1];
+			hm=H[0][m+n1-1];
+		    }
+		    if(m==1){
+			hp=((k*k+p*p)*H[0][m+n1]-H[1][m+n1])/2/k/p;
+			hm=((k*k+p*p)*H[0][m+n1-1]-H[1][m+n1-1])/2/k/p;
+		    }
+		    if(m==2){
+			hp=(((k*k+p*p)*(k*k+p*p)-4*k*k*p*p)*H[0][m+n1]
+			    -6*(k*k+p*p)*H[1][m+n1]
+			    +3*H[2][m+n1]
+			    )
+			    /8/k/k/p/p;
+			hm=(
+			    ((k*k+p*p)*(k*k+p*p)-4*k*k*p*p)*H[0][m+n1-1]
+			    -6*(k*k+p*p)*H[1][m+n1-1]
+			    +3*H[2][m+n1-1]
+			    )
+			    /8/k/k/p/p;
+		    }
+		    h1=( (hp-hm) *p1
+			 +hm*H[0].coordinate(m+n1,1)-hp*H[0].coordinate(m+n1-1,1) )
+			/(H[0].coordinate(m+n1,1)-H[0].coordinate(m+n1-1,1));
+		}
+		if(n2>0){
+		    if(m==0){
+			hp=H[0][m+n2];
+			hm=H[0][m+n2-1];
+		    }
+		    if(m==1){
+			hp=((k*k+p*p)*H[0][m+n2]-H[1][m+n2])/2/k/p;
+			hm=((k*k+p*p)*H[0][m+n2-1]-H[1][m+n2-1])/2/k/p;
+		    }
+		    if(m==2){
+			hp=(((k*k+p*p)*(k*k+p*p)-4*k*k*p*p)*H[0][m+n2]
+			    -6*(k*k+p*p)*H[1][m+n2]
+			    +3*H[2][m+n2]
+			    )
+			    /8/k/k/p/p;
+			hm=(
+			    ((k*k+p*p)*(k*k+p*p)-4*k*k*p*p)*H[0][m+n2-1]
+			    -6*(k*k+p*p)*H[1][m+n2-1]
+			    +3*H[2][m+n2-1]
+			    )
+			    /8/k/k/p/p;
+		    }
+		    h2=( (hp-hm) *p2
+			 +hm*H[0].coordinate(m+n2,1)-hp*H[0].coordinate(m+n2-1,1) )
+			/(H[0].coordinate(m+n2,1)-H[0].coordinate(m+n2-1,1));
+		}
+		w0[i]=(h1-h2)/k/p;       
+	    }
+	}
+	W.push_back(w0);
+    }
+}
+
 int main(){
     std::string line;
     std::ifstream infile("w.in");

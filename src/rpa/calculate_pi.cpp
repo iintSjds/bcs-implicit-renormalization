@@ -257,7 +257,7 @@ Pi_Function test_pi(){
 
 int main(){
     double e2=1.0;
-    Pi_Function pf=calc_pi();
+    Pi_Function pf=test_pi();
 
     H5::H5File file("pi.h5",H5F_ACC_TRUNC);
     H5::Group g1(file.createGroup("/pi"));

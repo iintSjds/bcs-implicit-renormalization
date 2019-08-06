@@ -192,7 +192,7 @@ Iterator::Iterator(double T_,double mu_,double m_,
     // random init
     trng::uniform01_dist<> uniform;
     for(int i=0;i<delta.size();i++){
-	delta[i]=2*uniform(gen)-1;
+	delta[i]=1;//2*uniform(gen)-1;
 	sum1[i]=delta[i];
     }
     
@@ -428,9 +428,9 @@ void Iterator::update1_mc(int M, int N){
     trng::uniform01_dist<> uniform;
     int psize=delta.grid().gg(1).size();
     int fsize=delta.grid().gg(0).size();
-    double all=delta.size()*delta.size();
+    double all=delta.size()*fsize*(psize-1);
     for(int i=0;i<M;i++){
-	double multi=1+count/all;
+	double multi=1;
 	double subcount=0;
 	std::vector<double> subsum1(delta.size(),0);
 	#pragma omp parallel num_threads(omp_get_max_threads()-2)	\
@@ -441,7 +441,7 @@ void Iterator::update1_mc(int M, int N){
 	    int m=uniform(mc)*fsize;
 	    int n=uniform(mc)*fsize;
 	    int k=uniform(mc)*psize;
-	    int p=uniform(mc)*psize;
+	    int p=uniform(mc)*(psize-1);
 	    subcount+=multi;
 	    if((delta.grid().gg(1)[k]>kf+kc)||(delta.grid().gg(0)[m]>wc)){
 		if((delta.grid().gg(1)[p]>kf+kc)||(delta.grid().gg(0)[n]>wc)){
@@ -551,7 +551,7 @@ int main(){
     signal(SIGINT, signalHandler);
 
     
-    Iterator it(T,mu,m,w0,v,1,100);
+    Iterator it(T,mu,m,w0,v,100,100);
     try{
 	if(exist_file("delta.h5")){
 	    bool suc=it.load_delta("delta.h5"); 
@@ -559,8 +559,8 @@ int main(){
 		     <<std::endl;
 	}
 	for(int i=0;i<50;i++) {
-	    it.update1_mc(100,100000);
-	    std::cout<<it.update0(5.0,10)<<std::endl;
+	    //it.update1_mc(100,100000);
+	    std::cout<<it.update0(5.0,3)<<std::endl;
 	    it.save_delta("delta.h5");
 	}
 	std::cout<<it.update0(5.0,1)<<std::endl;
