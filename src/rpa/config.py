@@ -13,7 +13,7 @@ rs=1.0/1.0421235224
 Kc=15
 wc=15
 
-qc=0.00000001
+qc=0.000001
 kc=0.000001
 
 if len(sys.argv)==2:
@@ -53,6 +53,8 @@ while v[-1]<wc:
     if count==5:
         count=0
         multi*=2
+# while v[-1]<wc:
+#     v.append(v[-1]+2*np.pi*T)
 
 q=[qc,]
 while q[-1]<2*Kc:
@@ -128,6 +130,10 @@ file.write("set m=%.16f\n" %m)
 file.write("set rs=%.16f\n" %rs)
 file.write("set v=grid\n")
 for i in v:
+    file.write("%.16f\n" %i)
+file.write("end grid\n")
+file.write("set mmt=grid\n")
+for i in k:
     file.write("%.16f\n" %i)
 file.write("end grid\n")
 file.close()

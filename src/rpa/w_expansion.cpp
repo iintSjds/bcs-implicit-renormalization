@@ -8,47 +8,9 @@
 # include <omp.h>
 # include <string>
 # include "H5Cpp.h"
+# include "./helper.hpp"
 
 const double pi=3.141592653;
-
-class Helper_Func{
-public:
-    Helper_Func(Function pf,double e2_,int n);
-
-    int order() const{return H.size();}
-
-    Function& operator[](int i){return H[i];}
-private:
-    double e2;
-    std::vector<Function> H;
-};
-
-Helper_Func::Helper_Func(Function pf,double e2_,int n)
-    :e2(e2_)
-{
-    for(int m=0;m<n;m++){
-	Function h(pf.grid());
-#pragma omp parallel num_threads(omp_get_max_threads()-2)
-	{
-#pragma omp for
-	    for(int i=0;i<h.size();i++){
-		double val=0;
-		for(int j=(i/h.grid().lengths(1))*h.grid().lengths(1);j<i;j++){
-		    val+=(std::pow(pf.coordinate(j,1),2*m)
-			  /(pf.coordinate(j,1)/4/pi/e2
-			    +pf[j]/pf.coordinate(j,1))
-			  +std::pow(pf.coordinate(j+1,1),2*m)
-			  /(pf.coordinate(j+1,1)/4/pi/e2
-			   +pf[j+1]/pf.coordinate(j+1,1)))
-			//e2*(pf.coordinate(j,1)+pf.coordinate(j+1,1))
-			*(pf.coordinate(j+1,1)-pf.coordinate(j,1))/2;
-		}
-		h[i]=val;
-	    }
-	}
-	H.push_back(h);
-    }
-}
 
 class W_Func{
 public:
@@ -225,6 +187,9 @@ int main(){
     	    //<<1/(1+pf[i]/pf.coordinate(i,1)/pf.coordinate(i,1))<<std::endl;
     }
 
+    Helper_Func Hs(pf,e2,3);
+    Hs.save("h.h5");
+    
     std::vector<std::vector<double> > gwin;
     gwin.push_back(pf.grid().gg(0));
     //    std::vector<double> mmt(20,0);
@@ -242,7 +207,7 @@ int main(){
     	double p2=std::abs(w0.coordinate(i,1)-w0.coordinate(i,2));
     	int m=0,n1=0,n2=0;
     	for(int j=0;j<H1.size();j+=H1.grid().gg(1).size())
-    	    if(std::abs(H1.coordinate(j,0)-w)<1e-9)
+    	    if(std::abs(H1.coordinate(j,0)-w)<1e-14)
     		m=j;
     	for(int j=0;j<H1.grid().gg(1).size();j++){
     	    if(H1.coordinate(m+j,1)<p1) n1++;
@@ -256,7 +221,20 @@ int main(){
     	    h2=( (H1[m+n2]-H1[m+n2-1]) *p2
     		 +H1[m+n2-1]*H1.coordinate(m+n2,1)-H1[m+n2]*H1.coordinate(m+n2-1,1) )
     		/(H1.coordinate(m+n2,1)-H1.coordinate(m+n2-1,1));
-    	w0[i]=(h1-h2)/w0.coordinate(i,1)/w0.coordinate(i,2);
+	if(p2<1e-14){
+	    // correction for log integral
+	    double pp=0,pm=0;
+	    if(i%w0.grid().gg(2).size()!=0) pm=w0.coordinate(i, 2)-w0.coordinate(i-1, 2);
+	    if((i+1)%w0.grid().gg(2).size()!=0) pp=w0.coordinate(i+1, 2)-w0.coordinate(i, 2);
+	    for(int j=1;j<H1.grid().gg(1).size()&&H1.coordinate(m+j, 1)<pp;j++){
+		h2+=H1[m+j]*(H1.coordinate(m+j, 1)-H1.coordinate(m+j-1, 1));
+	    }
+	    for(int j=1;j<H1.grid().gg(1).size()&&H1.coordinate(m+j, 1)<pm;j++){
+		h2+=H1[m+j]*(H1.coordinate(m+j, 1)-H1.coordinate(m+j-1, 1));
+	    }
+	    h2/=(pp+pm);
+	}
+	w0[i]=(h1-h2)/w0.coordinate(i,1)/w0.coordinate(i,2);
     	// std::cout<<std::setw(8)<<w<<"\t"
     	// 	 <<std::setw(5)<<n1<<"\t"
     	// 	 <<std::setw(8)<<h1<<"\t"

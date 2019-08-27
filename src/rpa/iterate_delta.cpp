@@ -560,10 +560,10 @@ int main(){
 	}
 	for(int i=0;i<50;i++) {
 	    //it.update1_mc(100,100000);
-	    std::cout<<it.update0(5.0,3)<<std::endl;
+	    std::cout<<it.update0(6.0,3)<<std::endl;
 	    it.save_delta("delta.h5");
 	}
-	std::cout<<it.update0(5.0,1)<<std::endl;
+	std::cout<<it.update0(6.0,1)<<std::endl;
 	it.save_delta("delta.h5");
 	Function delta(it.get_delta()),area(it.get_area());
 	std::ofstream dout;
