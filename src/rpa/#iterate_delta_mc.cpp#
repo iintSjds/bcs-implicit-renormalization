@@ -271,7 +271,7 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	int nk=std::lower_bound(delta_count.grid().gg(1).begin(),
 				delta_count.grid().gg(1).end()-1,
 				k1) - delta_count.grid().gg(1).begin();
-	std::cout<<nw<<"\t"<<nk<<std::endl;
+
 	if(nw!=0) nw--;
 	// fout<<std::setw(15)<<delta_count.grid().gg(0)[nw]<<"\t"
 	//     <<std::setw(15)<<w1<<"\t"

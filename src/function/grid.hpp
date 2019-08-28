@@ -18,7 +18,7 @@ public:
     std::vector<double> operator[](int n) const;
     double coordinate(int n,int d) const;
     // su information
-    std::vector<double> gg(int i) const{return g[i];};
+    std::vector<double> &gg(int i) {return g[i];};
     
 
 private:
