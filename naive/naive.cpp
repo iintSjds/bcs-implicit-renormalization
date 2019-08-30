@@ -33,7 +33,7 @@ private:
     double GG(int i);
 public:
     Iterator(double,double,double,double,int);
-    int update(double shift);
+    double update(double shift);
     double measure();
     int print();
 };
@@ -74,8 +74,8 @@ double Iterator::GG(int i){
     return 1/std::fabs(freq[i])*compress_func(std::fabs(freq[i])/omega);
 }
 
-int Iterator::update(double shift=0){
-     for(int i=0;i<2*L;i++){
+double Iterator::update(double shift=0){
+    for(int i=0;i<2*L;i++){
 	temp[i]=shift*delta[i];
 	for(int j=0;j<2*L;j++){
 	    temp[i] += -PI*T*g*delta[j]*GG(j)*gamma[i][j];
@@ -91,7 +91,7 @@ int Iterator::update(double shift=0){
     for(int i=0;i<2*L;i++){
 	delta[i]=temp[i]/max;//renormalize
     }
-    return 0;
+    return max;
 }
 
 double Iterator::measure(){
@@ -111,12 +111,12 @@ int Iterator::print(){
 }
 
 
-double test(int l){
-    int N=51;
-    double g=2.0/PI,o=0.1,e=PI,t=e/(l-1)/PI;
+double test(double l){
+    int N=31;
+    double g=2.0/PI,o=0.5,e=15,t=e/(l-1)/PI;
     Iterator it(g,o,e,t,l/2);
-    for(int i=0;i<N;i++) it.update(2);
-    //it.print();
+    for(int i=0;i<N;i++) std::cout<<it.update(2)<<std::endl;
+    it.print();
     return it.measure();
 }
 
@@ -127,9 +127,10 @@ double test(int l){
 
 
 int main(){
-    for(int l=16;l<8000;l*=2){
-	std::cout<<1.0/(l-1)<<"\t"<<test(l)<<std::endl;
-	}
+    // for(int l=16;l<8000;l*=2){
+    // 	std::cout<<1.0/(l-1)<<"\t"<<test(l)<<std::endl;
+    // 	}
+    std::cout<<test(4774)<<std::endl;
     return 0;
 
 }

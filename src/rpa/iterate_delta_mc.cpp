@@ -196,7 +196,7 @@ void Iterator::save_delta(std::string filename){
 
 bool Iterator::load_delta(std::string filename){
     H5::H5File file;
-    double N=0.1;
+    double N=1e2;
     if(!exist_file(filename)) return false;
     file.openFile(filename,H5F_ACC_RDWR);
     H5::DataSet dataset;
@@ -217,7 +217,7 @@ bool Iterator::load_delta(std::string filename){
     for(int i=0;i<delta_count.size();i++){
 	delta_count[i]=dval[i]*N;
     }
-    count0=count1=N;
+    count0=count1=dval[0]*N;
     dataset.close();
     file.close();
     return true;
@@ -260,8 +260,8 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	k2=kd2.dist(urn(mc));
 	double prob=kd1.prob(k1)*kd2.prob(k2)*wd1.prob(w1)*wd2.prob(w2);
 
-	f1=1/pmax/prob;//(func(w1,w2,k1,k2)*delta(w2,k2))/prob;
-	f0=shift/pmax/prob;//(shift*delta(w1,k1))/pmax/prob;
+	f1=(func(w1,w2,k1,k2)*delta(w2,k2))/prob;
+	f0=((shift*0.01)*delta(w1,k1))/pmax/prob;
 
 	//	    std::cout<<f<<std::endl;
 	// update new config to delta_count
@@ -271,7 +271,7 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	int nk=std::lower_bound(delta_count.grid().gg(1).begin(),
 				delta_count.grid().gg(1).end()-1,
 				k1) - delta_count.grid().gg(1).begin();
-	std::cout<<nw<<"\t"<<nk<<std::endl;
+
 	if(nw!=0) nw--;
 	// fout<<std::setw(15)<<delta_count.grid().gg(0)[nw]<<"\t"
 	//     <<std::setw(15)<<w1<<"\t"
@@ -279,12 +279,14 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	//     <<std::setw(15)<<k1<<"\t"
 	//     <<std::setw(15)<<area[psize*nw+nk]//func(w1,w2,k1,k2)
 	//     <<std::endl;
+
 	c0+=f0;
 	c1+=f1;
-
+	
 	temp_delta_count[psize*nw+nk]+=(f0+f1)
 	    /area[psize*nw+nk];///area[psize*nw+nk];
-	temp_count0=temp_delta_count[0];//+=std::abs((f0+f1)/kc/wc);
+	if(psize*nw+nk==0) temp_count0+=(f0)/area[0];
+	//+=std::abs((f0+f1)/kc/wc);
 	// if((i+1)%(100*delta_count.size())==0){
 	//     for(int j=0;j<delta_count.size();j++){
 	// 	delta_count[j]+=temp_delta_count[j];
@@ -375,12 +377,13 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	*/	
     }
     for(int j=0;j<delta_count.size();j++){
-	delta_count[j]+=3*delta_count[j]/count0*temp_count0+temp_delta_count[j];
+	delta_count[j]+=99*shift*delta_count[j]/count0*temp_count0
+	    +temp_delta_count[j];
 	temp_delta_count[j]=0;
     }
     count0=delta_count[0];//+=2*temp_count0+temp_count0;
     temp_count0=0;
-    return shift/c0*c1;
+    return 0.01*shift/c0*c1;
 }
 
 void update1(int N){
@@ -470,15 +473,20 @@ double Iterator::func(double w1,double w2,double k1,double k2){
     // 	h=H[0][psize*fp+kp]+H[0][psize*fm+kp]
     // 	    -H[0][psize*fp+km]-H[0][psize*fm+km];
     // }
-    double g=0.3;
-    h+=4*pi*g/k1/k2*(std::log(pp/pm)-
-		     0.5*g/(vp*vp+g)*(2*std::log(pp/pm)-
-				      log((pp*pp+vp*vp+g)/(pm*pm+vp*vp+g))));
-    h+=4*pi*g/k1/k2*(std::log(pp/pm)-
-		     0.5*g/(vm*vm+g)*(2*std::log(pp/pm)-
-				      log((pp*pp+vm*vm+g)/(pm*pm+vm*vm+g))));
 
-    return -h/(w2*w2+(k2*k2/2.0/mass-mu)*(k2*k2/2.0/mass-mu))
+    // double g=1.0;
+    // h+=4*pi*g/k1/k2*(std::log(pp/pm)-
+    // 		     0.5*g/(vp*vp+g)*(2*std::log(pp/pm)-
+    // 				      log((pp*pp+vp*vp+g)/(pm*pm+vp*vp+g))));
+    // h+=4*pi*g/k1/k2*(std::log(pp/pm)-
+    // 		     0.5*g/(vm*vm+g)*(2*std::log(pp/pm)-
+    // 				      log((pp*pp+vm*vm+g)/(pm*pm+vm*vm+g))));
+
+    // return -h/(w2*w2+(k2*k2/2.0/mass-mu)*(k2*k2/2.0/mass-mu))
+    // 	*T*k2*k2/4.0/pi/pi;
+
+    return -2.0*((vp*vp)/(vp*vp+0.25)+(vm*vm)/(vm*vm+0.25))
+    	/(w2*w2+(k2*k2/2.0/mass-mu)*(k2*k2/2.0/mass-mu))
     	*T*k2*k2/4.0/pi/pi;
 }
 
@@ -534,9 +542,10 @@ int main(){
     signal(SIGINT, signalHandler);
     it.load_delta("delta.h5");
 
-    for(unsigned long long int i=0;i<100;i++)
+    for(unsigned long long int i=0;i<200;i++)
 	{
-	    std::cout<<it.update0(1.0, 100, 23*i+19)<<std::endl;
+	    std::cout<<it.update0(2.0, 50000000, 23*i+19)<<"\t"
+		     <<it.get_count0()<<std::endl;
 	    it.save_delta("delta.h5");
 	}
     it.print("delta_mc.txt");
