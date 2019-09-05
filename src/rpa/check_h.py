@@ -19,5 +19,7 @@ qq=qq.ravel()
 
 ha=4*np.pi*g*(np.log(qq)-g/(ww**2+g)*(np.log(qq)-0.5*np.log(qq**2+ww**2+g)))
 
-np.savetxt("h_check.txt",np.column_stack((ww,qq,h,ha,(h-ha)/(h+1e-15))),fmt="%.16f")
+aha=ha-np.array([ha[(i//len(q))*len(q)] for i in range(len(ha))])
+
+np.savetxt("h_check.txt",np.column_stack((ww,qq,h,aha,(h-aha)/np.abs(h+1e-15))),fmt="%.16f")
 

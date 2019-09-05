@@ -113,9 +113,9 @@ int Iterator::print(){
 
 double test(double l){
     int N=31;
-    double g=2.0/PI,o=0.5,e=15,t=e/(l-1)/PI;
+    double g=1/PI,o=0.5,e=15,t=e/(l-1)/PI;
     Iterator it(g,o,e,t,l/2);
-    for(int i=0;i<N;i++) std::cout<<it.update(2)<<std::endl;
+    for(int i=0;i<N;i++) std::cout<<it.update(0)<<std::endl;
     it.print();
     return it.measure();
 }

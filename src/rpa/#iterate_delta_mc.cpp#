@@ -282,10 +282,6 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	//     <<std::setw(15)<<k1<<"\t"
 	//     <<std::setw(15)<<area[psize*nw+nk]//func(w1,w2,k1,k2)
 	//     <<std::endl;
-	// if(psize*nw+nk==0){
-	//     c0+=f0/area[0];
-	//     c1+=f1/area[0];
-	// }
 	c0+=f0;c1+=f1;
 	
 	temp_delta_count[psize*nw+nk]+=(f0+f1)
