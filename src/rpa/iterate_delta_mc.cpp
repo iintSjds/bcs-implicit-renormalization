@@ -39,6 +39,13 @@ public:
     }
 };
 
+class gotnan:public std::exception{
+public:
+    const char* what() const throw(){
+	return "nan appear in calculation";
+    }
+};
+
 void signalHandler( int signum ) {
    std::cout << "Interrupt signal (" << signum << ") received.\n";
    // cleanup and close up stuff here
@@ -160,45 +167,52 @@ void Iterator::save_delta(std::string filename){
     H5::H5File file;
     //if(!exist_file(filename)){
     file=H5::H5File(filename,H5F_ACC_TRUNC);
-    H5::Group g1(file.createGroup("/delta"));
+    try{
+	H5::Group g1(file.createGroup("/delta"));
 	//}
 	//else{
 	//file.openFile(filename,H5F_ACC_RDWR);
 	//}
-    hsize_t dims[1];
-    dims[0]=delta_count.grid().lengths(0);
-    H5::DataSpace dataspace=H5::DataSpace(1,dims);
-    H5::DataSet dataset(file.createDataSet("/delta/w",
-					   H5::PredType::IEEE_F64LE,dataspace));
-    dataset.write(&(delta_count.grid().gg(0)[0]),H5::PredType::IEEE_F64LE);
-    dataspace.close();
-    dataset.close();
-    //store momentum grid
-    dims[0]=delta_count.grid().lengths(1);
-    dataspace=H5::DataSpace(1,dims);
-    dataset=H5::DataSet(file.createDataSet("/delta/q",
-					   H5::PredType::IEEE_F64LE,dataspace));
-    dataset.write(&(delta_count.grid().gg(1)[0]),H5::PredType::IEEE_F64LE);
-    dataspace.close();
-    dataset.close();
-    //store val grid
-    dims[0]=delta_count.size();
-    dataspace=H5::DataSpace(1,dims);
-    dataset=H5::DataSet(file.createDataSet("/delta/delta",
-					   H5::PredType::IEEE_F64LE,dataspace));
-    std::vector<double> delta_val(delta_count.size(),0);
-    for(int i=0;i<delta_count.size();i++){
-	delta_val[i]=delta(delta_count.coordinate(i,0),delta_count.coordinate(i,1));
+	hsize_t dims[1];
+	dims[0]=delta_count.grid().lengths(0);
+	H5::DataSpace dataspace=H5::DataSpace(1,dims);
+	H5::DataSet dataset(file.createDataSet("/delta/w",
+					       H5::PredType::IEEE_F64LE,dataspace));
+	dataset.write(&(delta_count.grid().gg(0)[0]),H5::PredType::IEEE_F64LE);
+	dataspace.close();
+	dataset.close();
+	//store momentum grid
+	dims[0]=delta_count.grid().lengths(1);
+	dataspace=H5::DataSpace(1,dims);
+	dataset=H5::DataSet(file.createDataSet("/delta/q",
+					       H5::PredType::IEEE_F64LE,dataspace));
+	dataset.write(&(delta_count.grid().gg(1)[0]),H5::PredType::IEEE_F64LE);
+	dataspace.close();
+	dataset.close();
+	//store val grid
+	dims[0]=delta_count.size();
+	dataspace=H5::DataSpace(1,dims);
+	dataset=H5::DataSet(file.createDataSet("/delta/delta",
+					       H5::PredType::IEEE_F64LE,dataspace));
+	std::vector<double> delta_val(delta_count.size(),0);
+	for(int i=0;i<delta_count.size();i++){
+	    delta_val[i]=delta(delta_count.coordinate(i,0),delta_count.coordinate(i,1));
+	}
+	dataset.write(&(delta_val[0]),H5::PredType::IEEE_F64LE);
+	dataspace.close();
+	dataset.close();
+	file.close();
     }
-    dataset.write(&(delta_val[0]),H5::PredType::IEEE_F64LE);
-    dataspace.close();
-    dataset.close();
-    file.close();
+    catch(sigint){
+	//TBA
+	file.close();
+	throw;
+    }
 }
 
 bool Iterator::load_delta(std::string filename){
     H5::H5File file;
-    double N=1e5;
+    double N=1e9;
     if(!exist_file(filename)) return false;
     file.openFile(filename,H5F_ACC_RDWR);
     H5::DataSet dataset;
@@ -224,7 +238,6 @@ bool Iterator::load_delta(std::string filename){
     file.close();
     return true;
 }
-
 
 double Iterator::update0(double shift,int N,unsigned long seed){
     //mc.seed(int(count0));
@@ -282,10 +295,6 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	//     <<std::setw(15)<<k1<<"\t"
 	//     <<std::setw(15)<<area[psize*nw+nk]//func(w1,w2,k1,k2)
 	//     <<std::endl;
-	// if(psize*nw+nk==0){
-	//     c0+=f0/area[0];
-	//     c1+=f1/area[0];
-	// }
 	c0+=f0;c1+=f1;
 	
 	temp_delta_count[psize*nw+nk]+=(f0+f1)
@@ -393,8 +402,12 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 	temp_delta_count[j]=0;
     }
     count0=delta_count[0];//+=2*temp_count0+temp_count0;
+    // std::cout<<hitcount<<"\t"
+    // 	     <<c0<<"\t"
+    // 	     <<c1<<"\t"
+    // 	     <<temp_count0<<"\t"
+    // 	     <<std::endl;
     temp_count0=0;
-    std::cout<<hitcount<<std::endl;
     return 0.01*shift/c0*c1;
 }
 
@@ -467,7 +480,7 @@ double Iterator::delta(double w,double k){
 
 double Iterator::func(double w1,double w2,double k1,double k2){
     //    std::cout<<"in func"<<std::endl;
-    double pp=k1+k2,pm=std::abs(k1-k2);
+    double pp=k1+k2,pm=std::abs(k1-k2)+k_lower_cut;
     double vm=std::abs(w1-w2),vp=w1+w2;
     double h=0;
     // int kp=std::lower_bound(H[0].grid().gg(1).begin(),
@@ -498,9 +511,19 @@ double Iterator::func(double w1,double w2,double k1,double k2){
     		     0.5*g/(vm*vm+g)*(2*std::log(pp/pm)-
     				      std::log((pp*pp+vm*vm+g)/(pm*pm+vm*vm+g))));
 
-    return -h/(w2*w2+(k2*k2/2.0/mass-mu)*(k2*k2/2.0/mass-mu))
+    double result=-h/(w2*w2+(k2*k2/2.0/mass-mu)*(k2*k2/2.0/mass-mu))
     	*T*k2*k2/4.0/pi/pi;
 
+    if(std::isnan(result)){
+	std::cout<<"result==nan!"<<std::endl;
+	std::cout<<"current state:"<<std::endl;
+	std::cout<<"w1="<<w1<<std::endl;
+	std::cout<<"w2="<<w2<<std::endl;
+	std::cout<<"k1="<<k1<<std::endl;
+	std::cout<<"k2="<<k2<<std::endl;
+	throw gotnan();
+    }
+    else return result;
     // return -8.0*pi*((vp*vp)/(vp*vp+0.25)+(vm*vm)/(vm*vm+0.25))
     // 	/(w2*w2+(k2*k2/2.0/mass-mu)*(k2*k2/2.0/mass-mu))
     // 	*T*k2*k2/4.0/pi/pi;
@@ -558,9 +581,13 @@ int main(){
     signal(SIGINT, signalHandler);
     if(it.load_delta("delta.h5")) std::cout<<"load success"<<std::endl;
 
+    double sum_eigen=0;
     for(unsigned long long int i=0;i<200;i++)
 	{
-	    std::cout<<it.update0(5, 100000000, 23*i+19)<<"\t"
+	    double eigen=it.update0(3, 100000000, 23*i+19);
+	    sum_eigen+=eigen;
+	    std::cout<<eigen<<"\t"
+		     <<sum_eigen/(i+1)<<"\t"
 		     <<it.get_count0()<<std::endl;
 	    it.save_delta("delta.h5");
 	}
