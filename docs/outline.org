@@ -1,0 +1,22 @@
+* Introduction
+** Theoretical Discussions
+** Structure of Computational Part
+*** Outline
+*** Part I. Calculate W
+*** Part II. Calculate Eigenvalue
+ 
+* Structure of Codes
+** Calculate W
+*** RPA approximation
+**** Theory
+     \[
+     \Pi = G_0 G_0
+     \]
+     \[
+     W = \frac{V}{1+\Pi V} 
+     \]
+     with 
+     \[
+     V= \frac{4\pi e^2}{q^2}
+     \]
+
