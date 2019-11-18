@@ -1,0 +1,20 @@
+#+TITLE: Design of Function Class
+#+AUTHOR: Xiansheng Cai
+#+EMAIL: iintsjds@gmail.com
+* Goal
+A generalized definition of function class for all practical purposes.
+The base class should be defined as a purely abstract class, which contains only basic requirements
+for a "function" for diagrammatic calculations.
+
+* TODO Requirements [0/3]
+- [ ] A function should be defined as a map from a set of coordinates to a value.
+Thus a method which receives coordinates from an abstract class object Coordinates,
+and return value in another abstract class object Val should be provided.
+  - [ ] To keep code general, the parameter and return value should be defined as 
+    abstract classed; in practice, Coordinates could be std::vector<double>, and 
+    Val could be just double.
+- [ ] A method should be provided to know the domain of a function, and the dimension
+of the coordinates.
+- [ ] 
+
+

@@ -3,8 +3,12 @@
 #+EMAIL: iintsjds@gmail.com
 
 * 1. Introduction
+This project is an extendable c++ project for computing gap functions and critical temperatures of cooper instability of various systems.
+The idea is based on [[https://arxiv.org/abs/1905.03732][this paper]].
 
+A more detailed introduction of this code could be found [[./docs/outline.org][here]].
 * 2. Compile
-
+TBA
 * 3. Usage
+TBA
 

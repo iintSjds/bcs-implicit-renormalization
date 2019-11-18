@@ -1,13 +1,28 @@
+#+TITLE: Outline of Calculation Part
+#+AUTHOR: Xiansheng Cai
+#+EMAIL: iintsjds@gmail.com
+
 * Introduction
-** Theoretical Discussions
-** Structure of Computational Part
-*** Outline
-*** Part I. Calculate W
-*** Part II. Calculate Eigenvalue
- 
+* Theoretical Analysis
+  At current stage, this code is mainly focusing on Coulumb systems. 
+The Hamiltonian would be
+\[
+H=\Sigma_{i=1}^{N} \frac{p_i^2}{2m}+\Sigma_{i<j} \frac{e^2}{|r_i-r_j|}n_i n_j,
+\]
+
+** Jellium model
+   As a starting point, we considered Jellium model, a much simplified Coulumb model, where a universal positive
+background which exactly cancels the diverging Hartree term.
+
+** GW
+   
+*** RPA
+
+** $T_C$ Protocol
+
 * Structure of Codes
 ** Calculate W
-*** RPA approximation
+*** RPA
 **** Theory
      \[
      \Pi = G_0 G_0

@@ -1,0 +1,69 @@
+#+TITLE: Scratch of the Project Plan
+#+AUTHOR: Xiansheng Cai
+#+EMAIL: iintsjds@gmail.com
+
+* Ultimate Goal
+The untimate goal of this project is to build an efficient code for calculating eigenvalue and gap-function
+of a given system at given temperature.
+
+At current stage, a simplified model, Jellium model, is considered, together with several approximations.
+- Model :: Jellium model
+- Approximations :: GW, RPA
+
+* Requirements
+1. The code should generate correct result efficiently.
+2. The code should be able to produce two results, with or without decomposing the gap-function into two parts.
+3. The uncertaintied introduced by randomness of MC procedure, systematic error from discrete grids, should be
+well controlled.
+4. The code should be extenable for future use, including calculations beyond RPA and GW approximations and
+for different models.
+5. The code should be organized in c++ OOP manner, so that each unit should be developed independently and 
+modulized. A test should acompany each unit to test the accuracy and efficiency of the code.
+
+* Steps
+There are mainly two steps in our calculations. The first step is to calculate the four-point vertex required
+for the second step. The second step calculates \lambda and gap-function with pure power method or implicit
+renormalization method.
+
+** 4-Point Vertex
+4-point vertex is generally calculated with diagrammatic monte carlo method. In our case at current stage under
+GW/RPA approximations, this function can be analytically calculated.
+
+*** GW/RPA
+
+**** Input
+- temperature
+- Wigner-Seitz radius r_{s}
+- grids for momentum and frequency
+
+**** Output
+A function W under given grids, and a set of helper functions H_{n} should be produced.
+
+**** Detail
+
+***** calculate \Pi
+\Pi could be directly obtained from 
+\[ \Pi= G_{0}G_{0}\]
+with an integration over momentum and sum over frequency carried out by monte carlo method
+or purely extrapolation.
+
+The sum over frequency could be calculated by hand.
+
+This calculation depends only on the temperature, thus the result should be saved for different r_{s} under same
+temperature.
+
+***** calculate W
+\[ W= \frac{V}{1+\Pi V} \]
+
+***** calculate H_{n}
+\[ H_{n}=\int_{0}^{y} z^{n} W(z) dz \]
+where the integration is carried over momentum space.
+
+** Gap-Function
+With helper function H_{n} we obtained before, we can calculate gap-function and corresponding eigenvalue from
+
+*** Power Method
+
+*** Implicit Renormalization
+
+

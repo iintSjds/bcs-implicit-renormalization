@@ -134,7 +134,7 @@ public:
 
   double update0(double shift,int N,unsigned long seed=0);
   void update1(int N);
-    
+
   void save_delta(std::string filename);
   bool load_delta(std::string filename);
   double get_count0() const{return count0;}
@@ -147,7 +147,7 @@ private:
   Function area;
   Helper_Func H;
   double count0;
-  double count1;    
+  double count1;
 };
 
 void Iterator::print(std::string filename){
@@ -231,7 +231,7 @@ bool Iterator::load_delta(std::string filename){
     dataset.close();
     return false;
   }
-    
+
   for(int i=0;i<delta_count.size();i++){
     delta_count[i]=dval[i]*N;
   }
@@ -255,7 +255,7 @@ double Iterator::update0(double shift,int N,unsigned long seed){
 
   double temp_count0=0;
   std::vector<double> temp_delta_count(delta_count.size(),0);
-    
+
   int part=1;
   double kmin=delta_count.grid().gg(1).front();
   K_Distributor kd1(std::sqrt(2*mu*mass),kc,kmin);
@@ -298,7 +298,7 @@ double Iterator::update0(double shift,int N,unsigned long seed){
     //     <<std::setw(15)<<area[psize*nw+nk]//func(w1,w2,k1,k2)
     //     <<std::endl;
     c0+=f0;c1+=f1;
-	
+
     temp_delta_count[psize*nw+nk]+=(f0+f1)
 	    /area[psize*nw+nk];///area[psize*nw+nk];
     if(psize*nw+nk==0){
@@ -328,7 +328,7 @@ void Iterator::update1(int N){
 
   count1=1;
   std::vector<double> temp_delta_count(delta_count.size(),0);
-    
+
   int part=1;
   double kmin=delta_count.grid().gg(1).front();
   K_Distributor kd1(std::sqrt(2*mu*mass),kc,kmin);
@@ -356,7 +356,7 @@ void Iterator::update1(int N){
 
     if(nw!=0) nw--;
     c1+=f1;
-	
+
     delta_count[psize*nw+nk]+=(f1)
       /area[psize*nw+nk];///area[psize*nw+nk];
     count1++;
@@ -385,8 +385,7 @@ Iterator::Iterator(double T_,double mu_,double m_,
                            v.end()-1,
                            wc) - v.begin();
   wc=v[nwc];
-    
-    
+
   trng::uniform01_dist<> urn;
   W_Distributor wd1(mu,wc,T);
   for(int i=0;i<delta_count.size();i++){
@@ -439,7 +438,6 @@ double Iterator::delta(double w,double k){
   else{
     return delta_count[psize*nw+nk]/count1;
   }
-   
 }
 
 double Iterator::func(double w1,double w2,double k1,double k2){
@@ -460,7 +458,7 @@ double Iterator::func(double w1,double w2,double k1,double k2){
   // 			    H[0].grid().gg(0).end()-1,
   // 			    vm+0.01*T) - H[0].grid().gg(0).begin();
   // if(fp!=0) fp--;
-  // if(fm!=0) fm--;    
+  // if(fm!=0) fm--;
   // int psize=H[0].grid().gg(1).size();
   // if(order==0){
   // 	h=(H[0][psize*fp+kp]+H[0][psize*fm+kp]
@@ -535,7 +533,7 @@ int main(){
     }
     infile.close();
   }
-  double e2=rs*1.0421235224;    
+  double e2=rs*1.0421235224;
 
   Helper_Func H("./h.h5",e2,3);
   Iterator it(T,mu,m,H,v,mmt,50,100);
