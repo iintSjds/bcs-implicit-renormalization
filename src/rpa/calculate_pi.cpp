@@ -17,6 +17,7 @@ trng::yarn2 gen;
 // calculate bold interaction w
 // produce a bare w result file and a helper result file for further use
 
+const double mindiff=1e-12;
 const int M=1000000;
 const double pi=3.141592653;
 
@@ -41,6 +42,7 @@ private:
 
   double f(double p,double q,double w);
   double calculate(int n,int N); // calculate func value of point n with mc
+  double Ncalculate(int n,int N); // calculate func value with brutal numeric
 };
 
 Pi_Function::Pi_Function(Grid& g_in,double T_in,double mu_in,double m_in,int N)
@@ -50,7 +52,7 @@ Pi_Function::Pi_Function(Grid& g_in,double T_in,double mu_in,double m_in,int N)
   {
 #pragma omp for
     for(int i=0;i<func.size();i++){
-	    func[i]=calculate(i,N);
+	    func[i]=Ncalculate(i,N);
     }
   }
 }
@@ -71,7 +73,14 @@ Pi_Function::Pi_Function(Grid& g_in,bool is_analytic_test)
 }
 
 double Pi_Function::f(double p,double q,double w){
-  return p*m/2/pi/pi/q/(std::exp((p*p/2/m-mu)/T)+1)*std::log((w*w+(q*q+2*p*q)*(q*q+2*p*q)/4/m/m)/(w*w+(q*q-2*p*q)*(q*q-2*p*q)/4/m/m));
+  if(std::abs(p*2-q)<mindiff) return 0;
+  if(w!=0 && p*q*q*q/4/m/m<w*w*1e-9){
+    //return p*m/2/pi/pi/q/(std::exp((p*p/2/m-mu)/T)+1)*32*p*q*q*q/4/m/m/(w*w+(q*q*q*q+4*p*p*q*q)/4/m/m);
+    return 2*q*q/pi/pi/w/w*p*p/(std::exp((p*p/2/m-mu)/T)+1)*m/2/4/m/m;
+  }
+  double result=p*m/2/pi/pi/q/(std::exp((p*p/2/m-mu)/T)+1)*std::log((w*w+(q*q+2*p*q)*(q*q+2*p*q)/4/m/m)/(w*w+(q*q-2*p*q)*(q*q-2*p*q)/4/m/m));
+  if(std::isnan(result)) std::cout<<p<<"\t"<<q<<"\t"<<w<<std::endl;
+  return result;
 }
 
 double Pi_Function::calculate(int n,int M){
@@ -106,7 +115,7 @@ double Pi_Function::calculate(int n,int M){
     else I1++;
   }
 
-  D0=0.1*I1/I0*D0+0.0000001;
+  D0=0.1*I1/I0*D0+D0/M;
   I0=I1=0;
 
   for(int i=0;i<M;i++){
@@ -131,7 +140,50 @@ double Pi_Function::calculate(int n,int M){
   }
 
   return I1/I0*D0;
-    
+}
+
+double Pi_Function::Ncalculate(int n,int M){
+  double w=coordinate(n,0),q=coordinate(n,1);
+  double kf=std::sqrt(2*mu*m);
+  double qmin=grid().gg(1).front();
+  double qmax=grid().gg(1).back();
+  double pmin=0.01*qmin;
+  double result=0;
+  //  if(w==0){
+    double previous=0;
+    double current=0;
+    for(int i=0;i<M;i++){
+      // integrate from 0 to 0.5*q
+      current = 0.5*q+pmin-pmin*std::pow((0.5*q+pmin)/pmin,(M-i)*1.0/M);
+      result += (current-previous)*f(current,q,w);
+      previous = current;
+    }
+    for(int i=0;i<M;i++){
+      current = 0.5*q-pmin+pmin*std::pow((qmax-0.5*q+pmin)/pmin,(i+1)*1.0/M);
+      result += (current-previous)*f(current,q,w);
+      previous = current;
+    }
+    //}
+  // if(w!=0){
+  //   if(2*q<qmax){
+  //     double step=2*q/M;
+  //     for(int i=0;i<M;i++){
+  //       result += step*f((i+1.5)*step,q,w);
+  //     }
+  //     step=(grid().gg(1).back()-2*q)/M;
+  //     for(int i=0;i<M;i++){
+  //       // try uniform first
+  //       result += step*f((i+1)*step+2*q,q,w);
+  //     }
+  //   }
+  //   else{
+  //     double step=qmax/M;
+  //     for(int i=0;i<M;i++){
+  //       result += step*f((i+1)*step,q,w);
+  //     }
+  //   }
+  // }
+  return result;
 }
 
 Pi_Function calc_pi(){
@@ -153,7 +205,7 @@ Pi_Function calc_pi(){
 	    }
 	    if(cmd.compare("set T")==0) T=std::strtod(val.c_str(),NULL);
 	    if(cmd.compare("set mu")==0) mu=std::strtod(val.c_str(),NULL);
-	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);	    
+	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);
 	    if(cmd.compare("set freq")==0){
         while(std::getline(file,line)&&line.compare("end grid")!=0){
           freq.push_back(std::strtod(line.c_str(),NULL));
@@ -213,7 +265,7 @@ Pi_Function test_pi(){
 	    }
 	    if(cmd.compare("set T")==0) T=std::strtod(val.c_str(),NULL);
 	    if(cmd.compare("set mu")==0) mu=std::strtod(val.c_str(),NULL);
-	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);	    
+	    if(cmd.compare("set m")==0) m=std::strtod(val.c_str(),NULL);
 	    if(cmd.compare("set freq")==0){
         while(std::getline(file,line)&&line.compare("end grid")!=0){
           freq.push_back(std::strtod(line.c_str(),NULL));

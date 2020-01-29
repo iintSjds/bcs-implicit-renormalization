@@ -39,7 +39,7 @@ W_Func::W_Func(Grid gwin,Helper_Func H){
             m=j;
         for(int j=0;j<H[0].grid().gg(1).size();j++){
           if(H[0].coordinate(m+j,1)<p1) n1++;
-          if(H[0].coordinate(m+j,1)<p2) n2++;	    
+          if(H[0].coordinate(m+j,1)<p2) n2++;
         }
         double hp=0,hm=0;
         if(n1>0){
@@ -94,7 +94,7 @@ W_Func::W_Func(Grid gwin,Helper_Func H){
                +hm*H[0].coordinate(m+n2,1)-hp*H[0].coordinate(m+n2-1,1) )
             /(H[0].coordinate(m+n2,1)-H[0].coordinate(m+n2-1,1));
         }
-        w0[i]=(h1-h2)/k/p;       
+        w0[i]=(h1-h2)/k/p;
 	    }
     }
     W.push_back(w0);
@@ -132,7 +132,6 @@ int main(){
     infile.close();
   }
   double e2=rs*1.0421235224;
-    
   H5::H5File file;
   H5::DataSet dataset;
   file.openFile("pi.h5",H5F_ACC_RDWR);
@@ -189,7 +188,6 @@ int main(){
 
   Helper_Func Hs(pf,e2,3);
   Hs.save("h.h5");
-    
   std::vector<std::vector<double> > gwin;
   gwin.push_back(pf.grid().gg(0));
   //    std::vector<double> mmt(20,0);
@@ -211,7 +209,7 @@ int main(){
           m=j;
     	for(int j=0;j<H1.grid().gg(1).size();j++){
         if(H1.coordinate(m+j,1)<p1) n1++;
-        if(H1.coordinate(m+j,1)<p2) n2++;	    
+        if(H1.coordinate(m+j,1)<p2) n2++;
     	}
     	if(n1>0)
         h1=( (H1[m+n1]-H1[m+n1-1]) *p1
@@ -241,7 +239,6 @@ int main(){
     	// 	 <<std::setw(5)<<n2<<"\t"
     	// 	 <<std::setw(8)<<h2<<"\t"
     	// 	 <<w0[i]<<std::endl;//<<"\t"
-       
     }
   }
   std::ofstream wout;
@@ -249,7 +246,7 @@ int main(){
   for(int i=0;i<w0.size();i++){
     wout<<std::setw(10)<<w0.coordinate(i,0)<<"\t"
         <<std::setw(10)<<w0.coordinate(i,1)<<"\t"
-        <<std::setw(10)<<w0.coordinate(i,2)<<"\t"	    
+        <<std::setw(10)<<w0.coordinate(i,2)<<"\t"
         <<w0[i]<<std::endl;//<<"\t"
     //<<1/(pf.coordinate(i,1)*pf.coordinate(i,1)+pf[i])<<std::endl;//"\t"
     //<<1/(1+pf[i]/pf.coordinate(i,1)/pf.coordinate(i,1))<<std::endl;
@@ -291,7 +288,6 @@ int main(){
   dataspace.close();
   dataset.close();
 
-    
   return 0;
 
 }

@@ -11,7 +11,7 @@ Helper_Func::Helper_Func(std::string filename,double e2_,int n)
 
     std::vector<std::vector<double> > hs;
     hsize_t dims_out[1];
-    
+
     dataset=file.openDataSet("/h/w");
     dataset.getSpace().getSimpleExtentDims(dims_out,NULL);
     std::vector<double> w(dims_out[0],0);
